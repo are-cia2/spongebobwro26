@@ -60,6 +60,24 @@ The cells we use are the Molicel P26A, featuring a maximum discharge current of 
 <img width="426" height="300" alt="v1_4_pt1" src="https://github.com/user-attachments/assets/c4eb360d-210f-4857-a4c8-51dcbb983d2b" />
 
 ### Sensors Used
+### TFLUNA
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/bb51aa1a-d5a6-4419-ae13-734e3cc286ee" /> <img width="200" height="200" alt="Screenshot 2026-05-17 122810" src="https://github.com/user-attachments/assets/e70e5065-1d03-4b63-9a36-33af93056812" /> 
+
+This sensor is a Time of Flight (TOF) distance measurement sensor. We chose to use this sensor because it accurately measures object distance by measuring how long the light takes to bounce back to the sensor. It is able to measure a target object that is up to 8m away with 1cm resolution, which is sufficient for wall tracking the inner wall of the field. This sensor is also very compact, which would make it very easy to incorporate into our robot design. It offers quick distance measurements, which is beneficial in terms of making turns at corners quickly. Instead of using 4 TF mini-S sensors, we chose 2, as they are very energy-efficient, which is especially helpful since our robot is battery-operated (power consumption: 70 mA). 
+
+Compared to ultrasonic sensors, ToF sensors are less likely to be affected by environmental conditions and are also more accurate, especially in the range of a few centimetres. The sensors we are using also have a much narrower field of view than regular ultrasonic sensors, reducing the chance of multipath from the floor as the walls are far away compared to their height of just 10cm. Lastly, ultrasonic sensors also have a slower response time, and hence, we chose to use ToF sensors.
+
+### MPU6050
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/22af043a-207b-4dc4-9f9a-cec68f236765" />
+
+This sensor is an inertial measurement unit (IMU) that combines a 3‑axis gyroscope and a 3‑axis accelerometer. We chose to use this sensor because it is able to measure the robot’s orientation (angles and heading) accurately by tracking angular speed and displacement. Unlike a magnetic compass, which is affected by magnetic interference from motors, wiring, and the competition field, the MPU6050 provides stable readings that are not influenced by external magnetic fields.
+
+The gyroscope measures angular speed, and orientation can be calculated as angular displacement = angular speed × time. However, since speed is not constant, small errors can accumulate over time. Normally, this makes gyroscopes less reliable if used alone. The MPU6050 solves this problem by combining gyro and accelerometer data inside its Digital Motion Processor (DMP). With library support, the chip itself calculates the heading, reducing drift and offloading computation from the robot’s main controller. This makes the angle calculation more precise and efficient.
+
+Compared to a compass, the MPU6050 is less likely to be affected by environmental conditions and provides smoother angle tracking. It also allows us to reset the robot’s reference angle at any point, which is useful for manoeuvres such as U‑turns. The sensor is compact and widely supported, making it easy to integrate into our robot design. Overall, the MPU6050 offers reliable heading information and consistent navigation, which is crucial for competition performance.
+
+
+
 
 ## Obstacle Management
 
