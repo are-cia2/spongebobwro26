@@ -1,21 +1,5 @@
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
-#include "Wire.h"
-#include <EEPROM.h>  // RP2040 native flash-emulated non-volatile storage layer
 #include <EVN.h>
-EVNAlpha board;
 
-// =================================================================================
-// CONFIGURATION ROUTINE DEFINITION
-// =================================================================================
-// UNCOMMENT this line to calibrate the sensor and save offsets to QSPI Flash.
-// COMMENT out this line to run normally using saved offsets instantly on boot.
-//#define RUN_CALIBRATION
-
-// Base address map markers for the EEPROM storage emulator
-#define EEPROM_VALID_FLAG_ADDR 0
-#define EEPROM_OFFSETS_ADDR 4
-#define EEPROM_MAGIC_SIGNATURE 0x6500A5A5
 
 #define START 0
 #define FIRSTWALL 1
@@ -26,15 +10,12 @@ EVNAlpha board;
 #define PRINT 6
 #define FINDWALL 7
 
-#define LEFTDS 4
-#define RIGHTDS 5
-#define FRONTDS 3
-#define BACKDS 2
-
 float leftAngle;
 float rightAngle;
 float zeroPosition;
 float startDist;
+
+volatile float headingError = 0;
 
 int var = START;
 
@@ -43,35 +24,16 @@ bool startLeft = true;
 int corner = 0;
 
 
-
-// Struct configuration layout matching local hardware requirements
-struct IMUOffsets {
-  int16_t xGyro;
-  int16_t yGyro;
-  int16_t zGyro;
-  int16_t zAccel;
-};
-
-MPU6050 mpu;
-
-struct YPRData {
-  float yaw;
-  float pitch;
-  float roll;
-  bool valid;
-};
-
-YPRData stuff;
-
-bool dmpReady = false;
-uint16_t packetSize;
-uint8_t fifoBuffer[64];
-
-YPRData getYawPitchRoll();
-void handleCalibrationSequence();
-void loadSavedOffsets();
-//volatile bool setupComplete = false;
-
+extern volatile float stuffYaw;
+extern volatile bool stuffValid;
+extern volatile int leftDist;
+extern volatile int rightDist;
+extern volatile int frontDist;
+extern volatile int backDist;
+extern volatile bool leftCheck;
+extern volatile bool rightCheck;
+extern volatile bool frontCheck;
+extern volatile bool backCheck;
 
 volatile int pulseCount;  // Rotation step count
 int SIG_A = 0;            // Pin A output
@@ -126,10 +88,10 @@ void A_CHANGEBACK() {                  // Interrupt Service Routine (ISR)
 
 
 void runPosition(int targetPosition) {
-  targetPosition = constrain(targetPosition, rightAngle, leftAngle);
+  targetPosition = constrain(targetPosition, rightAngle - 5, leftAngle + 5);
   int positionError = pulseCount - targetPosition;  //(headingError * 5.0) - (steer.getPosition() - STEER_CENTER);
   //Serial.println(positionError);
-  int pwmRun = constrain(positionError * 22, -250, 250);
+  int pwmRun = constrain(positionError * 22, -255, 255);
   //Serial.println(pwmRun);
   if (positionError > 0) {
     // turn cw
@@ -144,59 +106,12 @@ void runPosition(int targetPosition) {
 
 volatile bool core0_ready = false;
 volatile bool core1_ready = false;
-int steer_right_bound = 0;
-int steer_left_bound = 0;
+int steerRightBound = 0;
+int steerLeftBound = 0;
 
 int steerOffset = 5;
 
 void setup() {
-  board.begin();
-  board.setPort(1);
-  Serial.begin(115200);
-  //while (!Serial)
-  //  ;
-
-  // Initialize the emulated EEPROM sector sizing (allocation inside the QSPI chip)
-  EEPROM.begin(512);
-
-  //Wire.begin();
-  //Wire.setClock(400000);
-
-  Serial.println(F("Initializing MPU6500..."));
-  mpu.initialize();
-
-  uint8_t chipID = mpu.getDeviceID();
-  if (chipID == 0x00 || chipID == 0xFF) {
-    Serial.println(F("Hardware connection failed. Check your SDA/SCL lines."));
-    while (1)
-      ;
-  }
-  Serial.println(F("Hardware communications online."));
-
-  // Upload DMP firmware configuration payload onto the chip
-  uint8_t devStatus = mpu.dmpInitialize();
-
-  if (devStatus == 0) {
-
-#ifdef RUN_CALIBRATION
-    // Call the automated routine to calculate errors and save them to QSPI Flash
-    handleCalibrationSequence();
-#else
-    // Pull previously stored offset data profiles out of QSPI flash instantly
-    loadSavedOffsets();
-#endif
-
-    mpu.setDMPEnabled(true);
-    packetSize = mpu.dmpGetFIFOPacketSize();
-    dmpReady = true;
-    Serial.println(F("System operational."));
-  } else {
-    Serial.print(F("DMP Initialization failed. Code: "));
-    Serial.println(devStatus);
-    while (1)
-      ;
-  }
-  //setupComplete = true;
 
   SIG_B = digitalRead(Pin_B);  // Current state of B
   SIG_A = SIG_B > 0 ? 0 : 1;   // Let them be different
@@ -204,7 +119,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(Pin_A), A_CHANGE, CHANGE);
 
   pinMode(23, OUTPUT);
-  pinMode(22, OUTPUT);
+  pinMode(22, OUTPUT); //M3
   digitalWrite(22, LOW);
   digitalWrite(23, HIGH);
   delay(1000);
@@ -217,8 +132,9 @@ void setup() {
     }
     prevPosition = currPosition;
   }
-  steer_right_bound = pulseCount;
+  steerRightBound = pulseCount;
   digitalWrite(23, LOW);
+
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
@@ -234,7 +150,7 @@ void setup() {
   pinMode(29, OUTPUT);  // M1
 
   digitalWrite(20, HIGH);
-  digitalWrite(21, HIGH);
+  digitalWrite(21, HIGH); //M4
 
   digitalWrite(LED_BUILTIN, HIGH);
 
@@ -265,104 +181,13 @@ void setup() {
   while (digitalReadFast(24)) runPosition(zeroPosition);
 
   Serial.println("Starting");
+  Serial.println(stuffYaw);
+
+  core0_ready = true;
+  
+  while (!core1_ready)
+    ;
 }
-
-/**
- * @brief Performs internal multi-point sensor averages and saves variables permanently.
- */
-void handleCalibrationSequence() {
-  Serial.println(F("[CALIBRATION] Starting... PLACE SENSOR FLAT AND COMPLETELY STILL!"));
-  delay(3000);  // 3-second safety window to allow hand tremors to decay completely
-
-  // 6 calculation loops executed directly inside internal hardware pipelines
-  Serial.println("Calibrating Accel");
-  mpu.CalibrateAccel(6);
-  Serial.println("Calibrating Gyro");
-  mpu.CalibrateGyro(6);
-  Serial.println(F("[CALIBRATION] Offsets calculated by MPU hardware engine."));
-
-  // Read generated offset values from the MPU6500 hardware registers
-  IMUOffsets computedOffsets;
-  computedOffsets.xGyro = mpu.getXGyroOffset();
-  computedOffsets.yGyro = mpu.getYGyroOffset();
-  computedOffsets.zGyro = mpu.getZGyroOffset();
-  computedOffsets.zAccel = mpu.getZAccelOffset();
-
-  // Commit values sequentially down to the QSPI Flash emulator array block
-  EEPROM.put(EEPROM_VALID_FLAG_ADDR, (uint32_t)EEPROM_MAGIC_SIGNATURE);
-  EEPROM.put(EEPROM_OFFSETS_ADDR, computedOffsets);
-
-  // Explicitly command the RP2040 memory controllers to execute physical block writes
-  bool success = EEPROM.commit();
-
-  if (success) {
-    Serial.println(F("[QSPI FLASH] Success! Calibration structures written to permanent memory."));
-    Serial.print(F("XGyro: "));
-    Serial.println(computedOffsets.xGyro);
-    Serial.print(F("YGyro: "));
-    Serial.println(computedOffsets.yGyro);
-    Serial.print(F("ZGyro: "));
-    Serial.println(computedOffsets.zGyro);
-    Serial.print(F("ZAccel: "));
-    Serial.println(computedOffsets.zAccel);
-  } else {
-    Serial.println(F("[ERROR] Flash memory write tracking execution failure."));
-  }
-
-  Serial.println(F("Calibration phase complete. Comment out #define RUN_CALIBRATION and re-upload."));
-  while (1)
-    ;  // Halt execution to prevent parsing bad loops during active tuning
-}
-
-/**
- * @brief Retrieves stored registers directly out of QSPI flash structures.
- */
-void loadSavedOffsets() {
-  uint32_t validationSignature = 0;
-  EEPROM.get(EEPROM_VALID_FLAG_ADDR, validationSignature);
-
-  if (validationSignature == EEPROM_MAGIC_SIGNATURE) {
-    IMUOffsets storedOffsets;
-    EEPROM.get(EEPROM_OFFSETS_ADDR, storedOffsets);
-
-    // Inject the recovered values directly into the active MPU registers
-    mpu.setXGyroOffset(storedOffsets.xGyro);
-    mpu.setYGyroOffset(storedOffsets.yGyro);
-    mpu.setZGyroOffset(storedOffsets.zGyro);
-    mpu.setZAccelOffset(storedOffsets.zAccel);
-    Serial.println(F("[QSPI FLASH] Valid hardware configuration loaded."));
-  } else {
-    Serial.println(F("[WARNING] No calibration footprint found in QSPI. Using fallback zeros."));
-    mpu.setXGyroOffset(0);
-    mpu.setYGyroOffset(0);
-    mpu.setZGyroOffset(0);
-    mpu.setZAccelOffset(0);
-  }
-}
-
-/**
- * @brief Polls the MPU6500 FIFO queue, processes orientation vectors, and extracts angles.
- */
-YPRData getYawPitchRoll() {
-  board.setPort(1);
-  YPRData data = { 0.0f, 0.0f, 0.0f, false };
-  if (!dmpReady) return data;
-
-  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-    Quaternion q;
-    VectorFloat gravity;
-    float ypr[3];
-
-    mpu.dmpGetQuaternion(&q, fifoBuffer);
-    mpu.dmpGetGravity(&gravity, &q);
-    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-
-    data.yaw = ypr[0] * 180.0f / M_PI;
-    data.valid = true;
-  }
-  return data;
-}
-
 
 float getError(float angle) {
 
@@ -376,16 +201,7 @@ float getError(float angle) {
     angle = 360 + angle;
   }
 
-  float error = 999;
-  YPRData stuff;
-
-  while (true) {
-    stuff = getYawPitchRoll();
-    if (stuff.valid) {
-      break;
-    }
-  }
-  error = angle - stuff.yaw;
+  float error = angle - stuffYaw;
   while (error >= 180) {
     error = error - 360;
   }
@@ -396,7 +212,7 @@ float getError(float angle) {
 
   //Serial.println(error);
 
-
+  headingError = error;
   return error;
 }
 
@@ -414,106 +230,168 @@ int turningAngle() {
 }
 
 
-int tfVal(byte port = LEFTDS) {
-  board.setPort(port);
-  int distance = 0;
+void leftWallTrack(int distance, int baseAngle) {
 
-  Wire.beginTransmission(0x10);
-  Wire.write(0x00);             // Command to read distance (register 0x00)
-  Wire.endTransmission(false);  // Send repeated start
+  if (leftDist > 900 || rightDist > 900) {
+    trackHeading(baseAngle);
 
-  Wire.requestFrom(0x10, 3);  // Request 3 bytes: distance LSB, MSB, and checksum
-
-  if (Wire.available() == 3) {
-    byte lsb = Wire.read();
-    byte msb = Wire.read();
-    byte checksum = Wire.read();
-
-    distance = (msb << 8) | lsb;
-
-    //Serial.print("Distance: ");
-    //Serial.print(distance);
-    //Serial.println(" cm");
+  } else {
+    digitalWrite(28, LOW);
+    digitalWrite(29, HIGH);
   }
 
-  return distance;  // 0 means error
-}
-
-
-void leftWallTrack(int distance, int baseAngle) {
-  digitalWrite(28, LOW);
-  digitalWrite(29, HIGH);
-
-  float leftError = tfVal(LEFTDS) - distance;
-  //Serial.println(leftError);
-  //Serial.print(tfVal(4));
-  float targetAngle = constrain(leftError * 5, -30, 30);
-  //Serial.println(targetAngle);
-
+  float leftError = leftDist - distance;
+  float targetAngle = constrain(leftError * 5, -22, 22) + baseAngle;
   runPosition(zeroPosition + getError(targetAngle));
 }
 
 void rightWallTrack(int distance, int baseAngle) {
-  digitalWrite(28, LOW);
-  digitalWrite(29, HIGH);
+  
+  if (leftDist > 900 || rightDist > 900) {
+    trackHeading(baseAngle);
 
-  float rightError = tfVal(RIGHTDS) - distance;
-  //Serial.println(leftError);
-  //Serial.print(tfVal(4));
-  float targetAngle = constrain(rightError * 5, -30, 30) + baseAngle;
-  //Serial.println(targetAngle);
+  } else {
+    digitalWrite(28, LOW);
+    digitalWrite(29, HIGH);
+  }
 
-  runPosition(zeroPosition + getError(targetAngle));
+  float rightError = rightDist - distance;
+  float targetAngle = constrain(rightError * 5, -22, 22) + baseAngle;
+  runPosition(zeroPosition - getError(targetAngle));
 }
 
 void trackHeading(int angle) {
   digitalWrite(28, LOW);
   digitalWrite(29, HIGH);
-
-  runPosition(zeroPosition + getError(angle));
+  float angleError = getError(angle);
+  Serial.println(angleError);
+  runPosition(zeroPosition - angleError);
 }
 
 void loop() {
+  switch (var) {
+    case PRINT:
+
+      break;
+
+    case START:
+      while (!stuffValid) {
+      }
+      Serial.println("START");
+
+      if (leftDist < rightDist) {
+        startLeft = true;
+        startDist = leftDist;
+
+      } else {
+        startLeft = false;
+        startDist = rightDist;
+      }
+      corner = 0;
+
+      var = FIRSTWALL;
+      
+      break;
+
+    case FIRSTWALL:
+    
+      Serial.println("FIRSTWALL");
+
+      if (startLeft) {
+        leftWallTrack(13, 0);
+      } else {
+        rightWallTrack(13, 0);
+      }
+      Serial.print(leftDist);
+      Serial.print("\t");
+      Serial.print(rightDist);
+      Serial.print("\t");
+      Serial.println(frontDist);
+
+
+      if (frontDist < 25) {
+        if (leftDist > 40) {
+          Serial.println("left");
+          cw = false;
+          corner++;
+          var = STOP;
+
+        } else {
+          Serial.println("right");
+          cw = true;
+          corner++;
+          var = STOP;
+        }
+      }
+
+      break;
+
+    case TURNLEFT:
+
+      digitalWrite(28, LOW);
+      digitalWrite(29, HIGH);
+      runPosition(leftAngle);
+
+
+      if (stuffYaw <= -(turningAngle())) {
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        var = FINDWALL;
+      }
+
+
+      break;
+
+    case STOP:
+      digitalWrite(28, LOW);
+      digitalWrite(29, LOW);
+      runPosition(zeroPosition);
+      break;
+
+
+
+
+  }
+}
+
+void loopy() {
 
 
   switch (var) {
 
     case PRINT:
-      Serial.print(tfVal(LEFTDS));
+      Serial.print(leftDist);
       Serial.print("\t");
-      Serial.print(tfVal(RIGHTDS));
+      Serial.print(rightDist);
       Serial.print("\t");
-      Serial.print(tfVal(FRONTDS));
+      Serial.print(frontDist);
       Serial.print("\t");
-      Serial.println(tfVal(BACKDS));
+      Serial.println(backDist);
 
-      YPRData stuff;
+      Serial.println(stuffYaw);
 
-      while (true) {
-        stuff = getYawPitchRoll();
-        if (stuff.valid) {
-          break;
-        }
-      }
-      Serial.println(stuff.yaw);
 
-          
 
       break;
 
     case START:
+      while (!stuffValid);
+      Serial.println("START");
+      Serial.print(leftDist);
+      Serial.print("\t");
+      Serial.println(rightDist);
 
-    
-      if (tfVal(LEFTDS) < tfVal(RIGHTDS)) {
+
+      if (leftDist < rightDist) {
         startLeft = true;
-        startDist = tfVal(LEFTDS);
-        
+        startDist = leftDist;
+
       } else {
         startLeft = false;
-        startDist = tfVal(RIGHTDS);
-
+        startDist = rightDist;
       }
       corner = 0;
+
       
 
       /*
@@ -527,85 +405,113 @@ void loop() {
       break;
 
     case FIRSTWALL:
-      
+
       if (startLeft) {
-        //Serial.println("LEFT");
+        Serial.println("LEFT");
         leftWallTrack(startDist, 0);
       } else {
-        //Serial.println("RIGHT");
+        Serial.println("RIGHT");
         rightWallTrack(startDist, 0);
       }
 
-      Serial.println(tfVal(LEFTDS));
+      Serial.print(leftDist);
+      Serial.print("\t");
+      Serial.println(rightDist);
 
-      if (tfVal(LEFTDS) > 40) {
+      //if (()) if both sides sum = invalid then track 0
+      if (leftDist > 40 && frontDist < 25) {
         cw = false;
+
         //var = STOP;
         corner++;
-        var = TURNLEFT;
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        //delay(5000);
+          var = TURNLEFT;
 
-      }  else if (tfVal(RIGHTDS) > 40) {
+      } else if (rightDist > 40 && frontDist < 25) {
         cw = true;
         //var = STOP;
         corner++;
-        var = TURNRIGHT;
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        //delay(5000);
+          var = TURNRIGHT;
       }
 
       break;
 
     case TURNLEFT:
-    //runPosition(leftAngle);
-    
+      Serial.println("LEFTTURN");
+      //runPosition(leftAngle);
+
       digitalWrite(28, LOW);
       digitalWrite(29, HIGH);
-      runPosition(leftAngle); 
-      //zeroPosition + getError(90));
+      runPosition(leftAngle);
+      Serial.println(leftAngle);
 
-      stuff = getYawPitchRoll();
 
-      //Serial.println(stuff.yaw);
-      //Serial.println(stuff.valid);
-
-      if (stuff.valid && stuff.yaw >= turningAngle()) {
+      if (stuffYaw <= -(turningAngle())) {
         //var = STOP;
-        var = FINDWALL;
-        
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        //delay(5000);
+          var = FINDWALL;
       }
-      
+
 
       break;
 
     case TURNRIGHT:
+      Serial.println("RIGHTTURN");
       digitalWrite(28, LOW);
       digitalWrite(29, HIGH);
       runPosition(rightAngle);
       //zeroPosition + getError(-90));
+      Serial.print("rightangle: ");
+      Serial.println(rightAngle);
+  
+      Serial.println(stuffYaw);
+      Serial.print("turning: ");
+      Serial.println(turningAngle());
 
-      if (stuff.valid && stuff.yaw <= -(turningAngle()) {
-        var = FINDWALL;
+      if (stuffYaw >= turningAngle()) {
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        //delay(5000);
+          var = FINDWALL;
         //var = STOP;
-        
       }
 
       break;
 
     case FINDWALL:
+      Serial.println("FINDWALL");
+      Serial.println(turningAngle());
+      Serial.println(rightDist);
       digitalWrite(28, LOW);
       digitalWrite(29, HIGH);
-      
-      if (cw) {
-        trackHeading(-(turningAngle());
 
-        if (tfVal(RIGHTDS) <= 70) {
-          corner++;
-          var = WALLTRACK;
-        }
-      } else {
+      if (cw) {
         trackHeading(turningAngle());
 
-        if (tfVal(LEFTDS) <= 70) {
-          
-          var = WALLTRACK;
+        if (rightDist <= 40) {
+          //corner++;
+          //var = STOP;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          //delay(5000);
+            var = WALLTRACK;
+        }
+      } else {
+        trackHeading(-(turningAngle()));
+
+        if (leftDist <= 40) {
+          //var = STOP;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          //delay(5000);
+            var = WALLTRACK;
         }
       }
 
@@ -620,31 +526,42 @@ void loop() {
         Serial.println("hi");
 
       } else if (cw) {
-        rightWallTrack(13, -(turningAngle()));
+        Serial.println("rightwalltrack");
+        Serial.println(turningAngle());
+        //Serial.println()
+        rightWallTrack(13, turningAngle());
 
-        if (tfVal(5) > 40) {
+        if (rightDist > 40) {
           cw = true;
           corner++;
-          var = TURNRIGHT;
+          //var = STOP;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          //delay(5000);
+            var = TURNRIGHT;
         }
 
       } else {
-        leftWallTrack(13, turningAngle());
+        leftWallTrack(13, -(turningAngle()));
 
-        if (tfVal(4) > 40) {
+        if (leftDist > 40) {
           cw = false;
           corner++;
-          var = TURNLEFT;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          //delay(5000);
+            //var = STOP;
+            var = TURNLEFT;
         }
-
-
-        break;
-
-      case STOP:
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
-        break;
-
       }
+
+
+      break;
+
+    case STOP:
+      digitalWrite(28, LOW);
+      digitalWrite(29, LOW);
+      runPosition(zeroPosition);
+      break;
   }
 }
