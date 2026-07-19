@@ -1,0 +1,321 @@
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
+#include "Wire.h"
+#include <EEPROM.h>  // RP2040 native flash-emulated non-volatile storage layer
+#include <EVN.h>
+#include <Arduino.h>
+#include <TFLI2C.h>
+EVNAlpha board;
+TFLI2C tflI2C;
+
+// =================================================================================
+// CONFIGURATION ROUTINE DEFINITION
+// =================================================================================
+// UNCOMMENT this line to calibrate the sensor and save offsets to QSPI Flash.
+// COMMENT out this line to run normally using saved offsets instantly on boot.
+//#define RUN_CALIBRATION
+
+// Base address map markers for the EEPROM storage emulator
+#define EEPROM_VALID_FLAG_ADDR 0
+#define EEPROM_OFFSETS_ADDR 4
+#define EEPROM_MAGIC_SIGNATURE 0x6500A5A5
+
+
+#define LEFTDS 4
+#define RIGHTDS 5
+#define FRONTDS 3
+#define BACKDS 2
+
+#define DTOR(a) ((float)a * PI / 180.0)
+#define CORRECTED_DISTANCE(d) ((float)d * cos(DTOR(snappedHeading)))
+
+int16_t tfDist;                // distance in centimeters
+int16_t tfAddr = TFL_DEF_ADR;  // use this default I2C address or
+                               // set variable to your own value
+
+// Struct configuration layout matching local hardware requirements
+struct IMUOffsets {
+  int16_t xGyro;
+  int16_t yGyro;
+  int16_t zGyro;
+  int16_t zAccel;
+};
+
+MPU6050 mpu;
+
+struct YPRData {
+  float yaw;
+  float pitch;
+  float roll;
+  bool valid;
+};
+
+extern volatile bool core0_ready;
+extern volatile bool core1_ready;
+
+bool dmpReady = false;
+uint16_t packetSize;
+uint8_t fifoBuffer[64];
+
+YPRData getYawPitchRoll();
+void handleCalibrationSequence();
+void loadSavedOffsets();
+//volatile bool setupComplete = false;
+
+volatile float stuffYaw = 0.0f;
+volatile bool stuffValid = false;
+int snappedHeading = 0;
+int heading = 0;
+
+volatile int leftDist;
+volatile int rightDist;
+volatile int frontDist;
+volatile int backDist;
+volatile bool leftCheck;
+volatile bool rightCheck;
+volatile bool frontCheck;
+volatile bool backCheck;
+
+void setup1() {
+  board.begin();
+  board.setPort(1);
+  Serial.begin(115200);
+  //while (!Serial)
+  //  ;
+
+  // Initialize the emulated EEPROM sector sizing (allocation inside the QSPI chip)
+  EEPROM.begin(512);
+
+  Wire.begin();
+  //Wire.setClock(400000);
+
+  Serial.println(F("Initializing MPU6500..."));
+  mpu.initialize();
+
+  uint8_t chipID = mpu.getDeviceID();
+  if (chipID == 0x00 || chipID == 0xFF) {
+    Serial.println(F("Hardware connection failed. Check your SDA/SCL lines."));
+    while (1)
+      ;
+  }
+  Serial.println(F("Hardware communications online."));
+
+  // Upload DMP firmware configuration payload onto the chip
+  uint8_t devStatus = mpu.dmpInitialize();
+
+  if (devStatus == 0) {
+
+#ifdef RUN_CALIBRATION
+    // Call the automated routine to calculate errors and save them to QSPI Flash
+    handleCalibrationSequence();
+#else
+    // Pull previously stored offset data profiles out of QSPI flash instantly
+    loadSavedOffsets();
+#endif
+
+    mpu.setDMPEnabled(true);
+    packetSize = mpu.dmpGetFIFOPacketSize();
+    dmpReady = true;
+    Serial.println(F("System operational."));
+  } else {
+    Serial.print(F("DMP Initialization failed. Code: "));
+    Serial.println(devStatus);
+    while (1)
+      ;
+  }
+  //setupComplete = true;
+
+  core1_ready = true;
+
+  /*
+  while (!core0_ready)
+    ;
+  */
+}
+
+
+
+/**
+ * @brief Performs internal multi-point sensor averages and saves variables permanently.
+ */
+void handleCalibrationSequence() {
+  Serial.println(F("[CALIBRATION] Starting... PLACE SENSOR FLAT AND COMPLETELY STILL!"));
+  delay(3000);  // 3-second safety window to allow hand tremors to decay completely
+
+  // 6 calculation loops executed directly inside internal hardware pipelines
+  Serial.println("Calibrating Accel");
+  mpu.CalibrateAccel(6);
+  Serial.println("Calibrating Gyro");
+  mpu.CalibrateGyro(6);
+  Serial.println(F("[CALIBRATION] Offsets calculated by MPU hardware engine."));
+
+  // Read generated offset values from the MPU6500 hardware registers
+  IMUOffsets computedOffsets;
+  computedOffsets.xGyro = mpu.getXGyroOffset();
+  computedOffsets.yGyro = mpu.getYGyroOffset();
+  computedOffsets.zGyro = mpu.getZGyroOffset();
+  computedOffsets.zAccel = mpu.getZAccelOffset();
+
+  // Commit values sequentially down to the QSPI Flash emulator array block
+  EEPROM.put(EEPROM_VALID_FLAG_ADDR, (uint32_t)EEPROM_MAGIC_SIGNATURE);
+  EEPROM.put(EEPROM_OFFSETS_ADDR, computedOffsets);
+
+  // Explicitly command the RP2040 memory controllers to execute physical block writes
+  bool success = EEPROM.commit();
+
+  if (success) {
+    Serial.println(F("[QSPI FLASH] Success! Calibration structures written to permanent memory."));
+    Serial.print(F("XGyro: "));
+    Serial.println(computedOffsets.xGyro);
+    Serial.print(F("YGyro: "));
+    Serial.println(computedOffsets.yGyro);
+    Serial.print(F("ZGyro: "));
+    Serial.println(computedOffsets.zGyro);
+    Serial.print(F("ZAccel: "));
+    Serial.println(computedOffsets.zAccel);
+  } else {
+    Serial.println(F("[ERROR] Flash memory write tracking execution failure."));
+  }
+
+  Serial.println(F("Calibration phase complete. Comment out #define RUN_CALIBRATION and re-upload."));
+  while (1)
+    ;  // Halt execution to prevent parsing bad loops during active tuning
+}
+
+/**
+ * @brief Retrieves stored registers directly out of QSPI flash structures.
+ */
+void loadSavedOffsets() {
+  uint32_t validationSignature = 0;
+  EEPROM.get(EEPROM_VALID_FLAG_ADDR, validationSignature);
+
+  if (validationSignature == EEPROM_MAGIC_SIGNATURE) {
+    IMUOffsets storedOffsets;
+    EEPROM.get(EEPROM_OFFSETS_ADDR, storedOffsets);
+
+    // Inject the recovered values directly into the active MPU registers
+    mpu.setXGyroOffset(storedOffsets.xGyro);
+    mpu.setYGyroOffset(storedOffsets.yGyro);
+    mpu.setZGyroOffset(storedOffsets.zGyro);
+    mpu.setZAccelOffset(storedOffsets.zAccel);
+    Serial.println(F("[QSPI FLASH] Valid hardware configuration loaded."));
+  } else {
+    Serial.println(F("[WARNING] No calibration footprint found in QSPI. Using fallback zeros."));
+    mpu.setXGyroOffset(0);
+    mpu.setYGyroOffset(0);
+    mpu.setZGyroOffset(0);
+    mpu.setZAccelOffset(0);
+  }
+}
+
+/**
+ * @brief Polls the MPU6500 FIFO queue, processes orientation vectors, and extracts angles.
+ */
+YPRData getYawPitchRoll() {
+  board.setPort(1);
+  YPRData data = { 0.0f, 0.0f, 0.0f, false };
+  if (!dmpReady) return data;
+
+  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+    Quaternion q;
+    VectorFloat gravity;
+    float ypr[3];
+
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+
+    data.yaw = ypr[0] * 180.0f / M_PI;
+    data.valid = true;
+  }
+  return data;
+}
+
+int tfVal(byte port = LEFTDS) {
+  int tfValue;
+  board.setPort(port);
+  if (tflI2C.getData(tfDist, tfAddr)) {
+    tfValue = tfDist;
+
+  } else {
+    tflI2C.printStatus();
+    Serial.println(port);
+  }
+
+  return tfValue;
+}
+
+
+
+
+void loop1() {
+
+  YPRData stuff = getYawPitchRoll();
+
+  if (stuff.valid) {
+    stuffYaw = stuff.yaw;
+    stuffValid = stuff.valid;
+
+
+    
+  }
+
+  if (fmod(stuffYaw, 90) > 45) {
+    snappedHeading = fmod(stuffYaw, 90) - 90;
+  } else {
+    snappedHeading = fmod(stuffYaw, 90);
+  }
+
+  int checkLeftDist = tfVal(LEFTDS);
+  if (checkLeftDist != 0) {
+    leftDist = CORRECTED_DISTANCE(checkLeftDist);
+
+  } else {
+    Serial.println("lefterror");
+  }
+  int checkRightDist = tfVal(RIGHTDS);
+  if (checkRightDist != 0) {
+    rightDist = CORRECTED_DISTANCE(checkRightDist);
+
+  } else {
+    Serial.println("righterror");
+  }
+  int checkFrontDist = tfVal(FRONTDS);
+  if (checkFrontDist != 0) {
+    frontDist = CORRECTED_DISTANCE(checkFrontDist);
+
+  } else {
+    Serial.println("fronterror");
+  }
+  int checkBackDist = tfVal(BACKDS);
+  if (checkBackDist != 0) {
+    backDist = CORRECTED_DISTANCE(checkBackDist);
+
+  } else {
+    Serial.println("backerror");
+  }
+
+  /* 
+    Serial.println(stuffYaw);
+    
+    Serial.print("left: ");
+    Serial.print(checkLeftDist);
+    Serial.print("\t");
+    Serial.println(leftDist);
+
+    Serial.print("right: ");
+    Serial.print(checkRightDist);
+    Serial.print("\t");
+    Serial.println(rightDist);
+
+    Serial.print("front: ");
+    Serial.print(checkFrontDist);
+    Serial.print("\t");
+    Serial.println(frontDist);
+
+    Serial.print("back: ");
+    Serial.print(checkBackDist);
+    Serial.print("\t");
+    Serial.println(backDist);
+    */
+}
