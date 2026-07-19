@@ -15,8 +15,6 @@ float rightAngle;
 float zeroPosition;
 float startDist;
 
-volatile float headingError = 0;
-
 int var = START;
 
 bool cw = true;
@@ -212,7 +210,6 @@ float getError(float angle) {
 
   //Serial.println(error);
 
-  headingError = error;
   return error;
 }
 
@@ -224,7 +221,9 @@ int turningAngle() {
 
   while (angle <= -180) {
     angle = 360 + angle;
-  }
+  } 
+
+
 
   return angle;
 }
@@ -232,7 +231,7 @@ int turningAngle() {
 
 void leftWallTrack(int distance, int baseAngle) {
 
-  if (leftDist > 900 || rightDist > 900) {
+  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0) {
     trackHeading(baseAngle);
 
   } else {
@@ -247,7 +246,7 @@ void leftWallTrack(int distance, int baseAngle) {
 
 void rightWallTrack(int distance, int baseAngle) {
   
-  if (leftDist > 900 || rightDist > 900) {
+  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0) {
     trackHeading(baseAngle);
 
   } else {
@@ -294,7 +293,6 @@ void loop() {
       break;
 
     case FIRSTWALL:
-    
       Serial.println("FIRSTWALL");
 
       if (startLeft) {
@@ -309,47 +307,126 @@ void loop() {
       Serial.println(frontDist);
 
 
-      if (frontDist < 25) {
+      if (frontDist < 50) {
         if (leftDist > 40) {
           Serial.println("left");
           cw = false;
           corner++;
-          var = STOP;
+          var = TURNLEFT;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          delay(1000);
 
-        } else {
+        } else if (rightDist > 40) {
           Serial.println("right");
           cw = true;
           corner++;
-          var = STOP;
+          var = TURNRIGHT;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          delay(1000);
+
         }
       }
 
       break;
 
     case TURNLEFT:
+      Serial.println("TURNLEFT");
 
       digitalWrite(28, LOW);
       digitalWrite(29, HIGH);
       runPosition(leftAngle);
 
 
-      if (stuffYaw <= -(turningAngle())) {
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
+      if (abs(stuffYaw + turningAngle()) < 3) {
+
         var = FINDWALL;
+        digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+         delay(1000);
       }
 
 
       break;
 
+    case TURNRIGHT:
+      Serial.println("TURNRIGHT");
+      Serial.println(stuffYaw);
+      Serial.println(turningAngle());
+
+      digitalWrite(28, LOW);
+      digitalWrite(29, HIGH);
+      runPosition(rightAngle);
+
+
+      if (abs(stuffYaw - turningAngle()) < 3) {
+ 
+        var = FINDWALL;
+        digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+        delay(1000);
+      }
+
+
+      break;
+
+    case FINDWALL:
+      Serial.println("FINDWALL");
+
+      if (cw) {
+        trackHeading(turningAngle());
+
+        if (rightDist < 40) {
+          var = WALLTRACK;
+        } 
+      } else {
+        trackHeading(-(turningAngle()));
+
+        if (leftDist < 40) {
+          var = WALLTRACK;
+        }
+      }
+
+      break;
+
+    case WALLTRACK:
+      Serial.println("WALLTRACK");
+
+      if (corner == 12) {
+        Serial.println("hello");
+        var = STOP;
+
+      } else if (cw) {
+        rightWallTrack(13, turningAngle());
+        if (frontDist < 50 && rightDist > 40) {
+          corner++;
+          var = TURNRIGHT;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+           delay(1000);
+        }
+
+      } else {
+        leftWallTrack(13, -(turningAngle()));
+        if (frontDist < 50 && leftDist > 40) {
+          corner++;
+          var = TURNLEFT;
+          digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+           delay(1000);
+        }
+
+      }
+
+      break;
+
     case STOP:
+
       digitalWrite(28, LOW);
       digitalWrite(29, LOW);
       runPosition(zeroPosition);
       break;
-
-
-
 
   }
 }
@@ -392,13 +469,6 @@ void loopy() {
       }
       corner = 0;
 
-      
-
-      /*
-      Serial.print(tfVal(4));
-      Serial.print("\t");
-      Serial.println(tfVal(5));
-      */
 
       var = FIRSTWALL;
 
@@ -501,7 +571,7 @@ void loopy() {
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
           //delay(5000);
-            var = WALLTRACK;
+          var = WALLTRACK;
         }
       } else {
         trackHeading(-(turningAngle()));

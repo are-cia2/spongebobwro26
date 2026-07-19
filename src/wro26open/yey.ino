@@ -3,7 +3,10 @@
 #include "Wire.h"
 #include <EEPROM.h>  // RP2040 native flash-emulated non-volatile storage layer
 #include <EVN.h>
+#include <Arduino.h>
+#include <TFLI2C.h>
 EVNAlpha board;
+TFLI2C tflI2C;
 
 // =================================================================================
 // CONFIGURATION ROUTINE DEFINITION
@@ -26,6 +29,10 @@ EVNAlpha board;
 #define DTOR(a) ((float)a * PI / 180.0)
 #define CORRECTED_DISTANCE(d) ((float)d * cos(DTOR(snappedHeading)))
 
+int16_t tfDist;                // distance in centimeters
+int16_t tfAddr = TFL_DEF_ADR;  // use this default I2C address or
+                               // set variable to your own value
+
 // Struct configuration layout matching local hardware requirements
 struct IMUOffsets {
   int16_t xGyro;
@@ -43,14 +50,8 @@ struct YPRData {
   bool valid;
 };
 
-volatile float stuffYaw = 0.0f;
-volatile bool stuffValid = false;
 extern volatile bool core0_ready;
 extern volatile bool core1_ready;
-volatile bool leftCheck;
-volatile bool rightCheck;
-volatile bool frontCheck;
-volatile bool backCheck;
 
 bool dmpReady = false;
 uint16_t packetSize;
@@ -61,6 +62,8 @@ void handleCalibrationSequence();
 void loadSavedOffsets();
 //volatile bool setupComplete = false;
 
+volatile float stuffYaw = 0.0f;
+volatile bool stuffValid = false;
 int snappedHeading = 0;
 int heading = 0;
 
@@ -68,6 +71,10 @@ volatile int leftDist;
 volatile int rightDist;
 volatile int frontDist;
 volatile int backDist;
+volatile bool leftCheck;
+volatile bool rightCheck;
+volatile bool frontCheck;
+volatile bool backCheck;
 
 void setup1() {
   board.begin();
@@ -79,7 +86,7 @@ void setup1() {
   // Initialize the emulated EEPROM sector sizing (allocation inside the QSPI chip)
   EEPROM.begin(512);
 
-  //Wire.begin();
+  Wire.begin();
   //Wire.setClock(400000);
 
   Serial.println(F("Initializing MPU6500..."));
@@ -120,8 +127,10 @@ void setup1() {
 
   core1_ready = true;
 
+  /*
   while (!core0_ready)
     ;
+  */
 }
 
 
@@ -223,28 +232,17 @@ YPRData getYawPitchRoll() {
 }
 
 int tfVal(byte port = LEFTDS) {
+  int tfValue;
   board.setPort(port);
-  int distance = 0;
+  if (tflI2C.getData(tfDist, tfAddr)) {
+    tfValue = tfDist;
 
-  Wire.beginTransmission(0x10);
-  Wire.write(0x00);             // Command to read distance (register 0x00)
-  Wire.endTransmission(false);  // Send repeated start
-
-  Wire.requestFrom(0x10, 3);  // Request 3 bytes: distance LSB, MSB, and checksum
-
-  if (Wire.available() == 3) {
-    byte lsb = Wire.read();
-    byte msb = Wire.read();
-    byte checksum = Wire.read();
-
-    distance = (msb << 8) | lsb;
-
-    //Serial.print("Distance: ");
-    //Serial.print(distance);
-    //Serial.println(" cm");
+  } else {
+    tflI2C.printStatus();
+    Serial.println(port);
   }
 
-  return distance;  // 0 means error
+  return tfValue;
 }
 
 
@@ -256,49 +254,50 @@ void loop1() {
 
   if (stuff.valid) {
     stuffYaw = stuff.yaw;
-    heading = stuff.yaw;
     stuffValid = stuff.valid;
 
-    if (heading % 90 > 45) {
-      snappedHeading = (heading % 90) - 90;
-    } else {
-      snappedHeading = heading % 90;
-    }
 
-    int checkLeftDist = tfVal(LEFTDS);
-    if (checkLeftDist != 0) {
-      leftDist = CORRECTED_DISTANCE(checkLeftDist);
+    
+  }
 
-    } else {
-      Serial.println("lefterror");
-    }
-    int checkRightDist = tfVal(RIGHTDS);
-    if (checkRightDist != 0) {
-      rightDist = CORRECTED_DISTANCE(checkRightDist);
+  if (fmod(stuffYaw, 90) > 45) {
+    snappedHeading = fmod(stuffYaw, 90) - 90;
+  } else {
+    snappedHeading = fmod(stuffYaw, 90);
+  }
 
-    } else {
-      Serial.println("righterror");
-    }
-    int checkFrontDist = tfVal(FRONTDS);
-    if (checkFrontDist != 0) {
-      frontDist = CORRECTED_DISTANCE(checkFrontDist);
+  int checkLeftDist = tfVal(LEFTDS);
+  if (checkLeftDist != 0) {
+    leftDist = CORRECTED_DISTANCE(checkLeftDist);
 
-    } else {
-      Serial.println("fronterror");
-    }
-    int checkBackDist = tfVal(BACKDS);
-    if (checkBackDist != 0) {
-      backDist = CORRECTED_DISTANCE(checkBackDist);
+  } else {
+    Serial.println("lefterror");
+  }
+  int checkRightDist = tfVal(RIGHTDS);
+  if (checkRightDist != 0) {
+    rightDist = CORRECTED_DISTANCE(checkRightDist);
 
-    } else {
-      Serial.println("backerror");
-    }
+  } else {
+    Serial.println("righterror");
+  }
+  int checkFrontDist = tfVal(FRONTDS);
+  if (checkFrontDist != 0) {
+    frontDist = CORRECTED_DISTANCE(checkFrontDist);
 
+  } else {
+    Serial.println("fronterror");
+  }
+  int checkBackDist = tfVal(BACKDS);
+  if (checkBackDist != 0) {
+    backDist = CORRECTED_DISTANCE(checkBackDist);
 
+  } else {
+    Serial.println("backerror");
+  }
 
-
+  /* 
     Serial.println(stuffYaw);
-
+    
     Serial.print("left: ");
     Serial.print(checkLeftDist);
     Serial.print("\t");
@@ -318,5 +317,5 @@ void loop1() {
     Serial.print(checkBackDist);
     Serial.print("\t");
     Serial.println(backDist);
-  }
+    */
 }
