@@ -53,6 +53,9 @@ struct YPRData {
 extern volatile bool core0_ready;
 extern volatile bool core1_ready;
 
+extern volatile int pulseCountback;
+extern volatile const float gearRatio;
+
 bool dmpReady = false;
 uint16_t packetSize;
 uint8_t fifoBuffer[64];
@@ -64,17 +67,17 @@ void loadSavedOffsets();
 
 volatile float stuffYaw = 0.0f;
 volatile bool stuffValid = false;
-int snappedHeading = 0;
+volatile int snappedHeading = 0;
 int heading = 0;
 
 volatile int leftDist;
 volatile int rightDist;
 volatile int frontDist;
 volatile int backDist;
-volatile bool leftCheck;
-volatile bool rightCheck;
-volatile bool frontCheck;
-volatile bool backCheck;
+volatile bool lefterror = false;
+volatile bool righterror = false;
+volatile bool fronterror = false;
+volatile bool backerror = false;
 
 void setup1() {
   board.begin();
@@ -236,8 +239,26 @@ int tfVal(byte port = LEFTDS) {
   board.setPort(port);
   if (tflI2C.getData(tfDist, tfAddr)) {
     tfValue = tfDist;
+    if (port == 5) {
+      lefterror = false;
+    } else if (port == 4) {
+      righterror = false;
+    } else if (port == 3) {
+      fronterror = false;
+    } else {
+      backerror = false;
+    }
 
   } else {
+    if (port == 5) {
+      lefterror = true;
+    } else if (port == 4) {
+      righterror = true;
+    } else if (port == 3) {
+      fronterror = true;
+    } else {
+      backerror = true;
+    }
     tflI2C.printStatus();
     Serial.println(port);
   }
@@ -295,9 +316,11 @@ void loop1() {
     Serial.println("backerror");
   }
 
-  /* 
-    Serial.println(stuffYaw);
-    
+    //Serial.println(pulseCountback);
+
+  
+    //Serial.println(stuffYaw);
+    /*
     Serial.print("left: ");
     Serial.print(checkLeftDist);
     Serial.print("\t");

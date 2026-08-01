@@ -9,16 +9,23 @@
 #define STOP 5
 #define PRINT 6
 #define FINDWALL 7
+#define LASTWALL 8
+#define OVERSHOOT 9
 
 float leftAngle;
 float rightAngle;
 float zeroPosition;
-float startDist;
+float leftstartDist;
+float rightstartDist;
+float frontStartDist;
+unsigned long long initialTime;
+volatile const float gearRatio = (((40.0 / 24.0) / 1.4) / 1.67);
 
 int var = START;
 
 bool cw = true;
 bool startLeft = true;
+bool lastturn = false;
 int corner = 0;
 
 
@@ -28,10 +35,11 @@ extern volatile int leftDist;
 extern volatile int rightDist;
 extern volatile int frontDist;
 extern volatile int backDist;
-extern volatile bool leftCheck;
-extern volatile bool rightCheck;
-extern volatile bool frontCheck;
-extern volatile bool backCheck;
+extern volatile int snappedHeading;
+extern volatile bool lefterror;
+extern volatile bool righterror;
+extern volatile bool fronterror;
+extern volatile bool backerror;
 
 volatile int pulseCount;  // Rotation step count
 int SIG_A = 0;            // Pin A output
@@ -60,12 +68,13 @@ void A_CHANGE() {              // Interrupt Service Routine (ISR)
 
 
 volatile int pulseCountback;  // Rotation step count
-int SIG_Aback = 0;            // Pin A output
-int SIG_Bback = 0;            // Pin B output
-int lastSIG_Aback = 0;        // Last state of SIG_A
-int lastSIG_Bback = 0;        // Last state of SIG_B
-const int Pin_Aback = 18;     // Interrupt pin (digital) for A (change your pins here)
-const int Pin_Bback = 19;     // Interrupt pin (digital) for B
+volatile int initialpulseCountback;
+int SIG_Aback = 0;         // Pin A output
+int SIG_Bback = 0;         // Pin B output
+int lastSIG_Aback = 0;     // Last state of SIG_A
+int lastSIG_Bback = 0;     // Last state of SIG_B
+const int Pin_Aback = 18;  // Interrupt pin (digital) for A (change your pins here)
+const int Pin_Bback = 19;  // Interrupt pin (digital) for B
 
 void A_CHANGEBACK() {                  // Interrupt Service Routine (ISR)
   detachInterrupt(0);                  // Important
@@ -117,7 +126,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(Pin_A), A_CHANGE, CHANGE);
 
   pinMode(23, OUTPUT);
-  pinMode(22, OUTPUT); //M3
+  pinMode(22, OUTPUT);  //M3
   digitalWrite(22, LOW);
   digitalWrite(23, HIGH);
   delay(1000);
@@ -148,7 +157,7 @@ void setup() {
   pinMode(29, OUTPUT);  // M1
 
   digitalWrite(20, HIGH);
-  digitalWrite(21, HIGH); //M4
+  digitalWrite(21, HIGH);  //M4
 
   digitalWrite(LED_BUILTIN, HIGH);
 
@@ -175,14 +184,17 @@ void setup() {
   Serial.println((leftAngle + rightAngle) / 2);
   zeroPosition = ((leftAngle + rightAngle) / 2) - steerOffset;
 
+  Serial.println(gearRatio);
+
   while (!digitalReadFast(24)) runPosition(zeroPosition);
   while (digitalReadFast(24)) runPosition(zeroPosition);
+
 
   Serial.println("Starting");
   Serial.println(stuffYaw);
 
   core0_ready = true;
-  
+
   while (!core1_ready)
     ;
 }
@@ -221,7 +233,7 @@ int turningAngle() {
 
   while (angle <= -180) {
     angle = 360 + angle;
-  } 
+  }
 
 
 
@@ -231,7 +243,7 @@ int turningAngle() {
 
 void leftWallTrack(int distance, int baseAngle) {
 
-  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0) {
+  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0 || lefterror || righterror || backerror || fronterror) {
     trackHeading(baseAngle);
 
   } else {
@@ -245,8 +257,8 @@ void leftWallTrack(int distance, int baseAngle) {
 }
 
 void rightWallTrack(int distance, int baseAngle) {
-  
-  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0) {
+
+  if (leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0 || lefterror || righterror || backerror || fronterror) {
     trackHeading(baseAngle);
 
   } else {
@@ -279,26 +291,31 @@ void loop() {
       Serial.println("START");
 
       if (leftDist < rightDist) {
+
         startLeft = true;
-        startDist = leftDist;
+        leftstartDist = leftDist;
+        rightstartDist = rightDist;
 
       } else {
         startLeft = false;
-        startDist = rightDist;
+        leftstartDist = leftDist;
+        rightstartDist = rightDist;
       }
+      frontStartDist = frontDist;
+
       corner = 0;
 
       var = FIRSTWALL;
-      
+
       break;
 
     case FIRSTWALL:
       Serial.println("FIRSTWALL");
 
       if (startLeft) {
-        leftWallTrack(13, 0);
+        leftWallTrack(leftstartDist, 0);
       } else {
-        rightWallTrack(13, 0);
+        rightWallTrack(rightstartDist, 0);
       }
       Serial.print(leftDist);
       Serial.print("\t");
@@ -313,19 +330,22 @@ void loop() {
           cw = false;
           corner++;
           var = TURNLEFT;
+          /*
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
           delay(1000);
+          */
 
         } else if (rightDist > 40) {
           Serial.println("right");
           cw = true;
           corner++;
           var = TURNRIGHT;
+          /*
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
           delay(1000);
-
+          */
         }
       }
 
@@ -341,10 +361,19 @@ void loop() {
 
       if (abs(stuffYaw + turningAngle()) < 3) {
 
-        var = FINDWALL;
+        if (lastturn) {
+          var = LASTWALL;
+
+        } else {
+          initialTime = millis();
+          var = FINDWALL;
+        }
+
+        /*
         digitalWrite(28, LOW);
-          digitalWrite(29, LOW);
-         delay(1000);
+        digitalWrite(29, LOW);
+        delay(1000);
+        */
       }
 
 
@@ -361,11 +390,20 @@ void loop() {
 
 
       if (abs(stuffYaw - turningAngle()) < 3) {
- 
-        var = FINDWALL;
+
+        if (lastturn) {
+          var = LASTWALL;
+
+        } else {
+          initialTime = millis();
+          var = FINDWALL;
+        }
+
+        /*
         digitalWrite(28, LOW);
-          digitalWrite(29, LOW);
+        digitalWrite(29, LOW);
         delay(1000);
+        */
       }
 
 
@@ -377,13 +415,15 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (rightDist < 40) {
+        if (rightDist < 40 && millis() - initialTime >= 500) {
+
           var = WALLTRACK;
-        } 
+        }
       } else {
         trackHeading(-(turningAngle()));
 
-        if (leftDist < 40) {
+        if (leftDist < 40 && millis() - initialTime >= 500) {
+
           var = WALLTRACK;
         }
       }
@@ -393,242 +433,110 @@ void loop() {
     case WALLTRACK:
       Serial.println("WALLTRACK");
 
-      if (corner == 12) {
-        Serial.println("hello");
-        var = STOP;
-
-      } else if (cw) {
+      if (cw) {
+        //trackHeading(turningAngle());
         rightWallTrack(13, turningAngle());
         if (frontDist < 50 && rightDist > 40) {
-          corner++;
-          var = TURNRIGHT;
+
+          if (corner == 11) {  //11
+            Serial.println("hello");
+            initialpulseCountback = pulseCountback;
+
+            var = OVERSHOOT;
+            
+            digitalWrite(28, LOW);
+          digitalWrite(29, LOW);
+          delay(1000);
+          
+          } else {
+            corner++;
+            var = TURNRIGHT;
+          }
+
+          /*
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
-           delay(1000);
+          delay(1000);
+          */
         }
 
       } else {
         leftWallTrack(13, -(turningAngle()));
         if (frontDist < 50 && leftDist > 40) {
-          corner++;
-          var = TURNLEFT;
+
+          if (corner == 3) {  //11
+            Serial.println("hello");
+            initialpulseCountback = pulseCountback;
+
+            var = OVERSHOOT;
+          } else {
+            corner++;
+            var = TURNLEFT;
+          }
+          /*
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
-           delay(1000);
+          delay(1000);
+          */
         }
-
       }
 
       break;
 
-    case STOP:
-
-      digitalWrite(28, LOW);
-      digitalWrite(29, LOW);
-      runPosition(zeroPosition);
-      break;
-
-  }
-}
-
-void loopy() {
-
-
-  switch (var) {
-
-    case PRINT:
-      Serial.print(leftDist);
+    case OVERSHOOT:
+      Serial.println("OVERSHOOT");
+      
+      Serial.print(abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))));
       Serial.print("\t");
-      Serial.print(rightDist);
-      Serial.print("\t");
-      Serial.print(frontDist);
-      Serial.print("\t");
-      Serial.println(backDist);
-
-      Serial.println(stuffYaw);
-
-
-
-      break;
-
-    case START:
-      while (!stuffValid);
-      Serial.println("START");
-      Serial.print(leftDist);
-      Serial.print("\t");
-      Serial.println(rightDist);
-
-
-      if (leftDist < rightDist) {
-        startLeft = true;
-        startDist = leftDist;
-
-      } else {
-        startLeft = false;
-        startDist = rightDist;
-      }
-      corner = 0;
-
-
-      var = FIRSTWALL;
-
-      break;
-
-    case FIRSTWALL:
-
-      if (startLeft) {
-        Serial.println("LEFT");
-        leftWallTrack(startDist, 0);
-      } else {
-        Serial.println("RIGHT");
-        rightWallTrack(startDist, 0);
-      }
-
-      Serial.print(leftDist);
-      Serial.print("\t");
-      Serial.println(rightDist);
-
-      //if (()) if both sides sum = invalid then track 0
-      if (leftDist > 40 && frontDist < 25) {
-        cw = false;
-
-        //var = STOP;
-        corner++;
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
-        //delay(5000);
-          var = TURNLEFT;
-
-      } else if (rightDist > 40 && frontDist < 25) {
-        cw = true;
-        //var = STOP;
-        corner++;
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
-        //delay(5000);
-          var = TURNRIGHT;
-      }
-
-      break;
-
-    case TURNLEFT:
-      Serial.println("LEFTTURN");
-      //runPosition(leftAngle);
-
-      digitalWrite(28, LOW);
-      digitalWrite(29, HIGH);
-      runPosition(leftAngle);
-      Serial.println(leftAngle);
-
-
-      if (stuffYaw <= -(turningAngle())) {
-        //var = STOP;
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
-        //delay(5000);
-          var = FINDWALL;
-      }
-
-
-      break;
-
-    case TURNRIGHT:
-      Serial.println("RIGHTTURN");
-      digitalWrite(28, LOW);
-      digitalWrite(29, HIGH);
-      runPosition(rightAngle);
-      //zeroPosition + getError(-90));
-      Serial.print("rightangle: ");
-      Serial.println(rightAngle);
-  
-      Serial.println(stuffYaw);
-      Serial.print("turning: ");
-      Serial.println(turningAngle());
-
-      if (stuffYaw >= turningAngle()) {
-        digitalWrite(28, LOW);
-        digitalWrite(29, LOW);
-        //delay(5000);
-          var = FINDWALL;
-        //var = STOP;
-      }
-
-      break;
-
-    case FINDWALL:
-      Serial.println("FINDWALL");
-      Serial.println(turningAngle());
-      Serial.println(rightDist);
-      digitalWrite(28, LOW);
-      digitalWrite(29, HIGH);
+      Serial.println((rightstartDist - 10) * 10);
 
       if (cw) {
         trackHeading(turningAngle());
+ 
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - 10) * 10) {
 
-        if (rightDist <= 40) {
-          //corner++;
-          //var = STOP;
+          lastturn = true;
+          corner++;
+          var = TURNRIGHT;
+          
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
-          //delay(5000);
-          var = WALLTRACK;
+          delay(1000);
+          
         }
       } else {
         trackHeading(-(turningAngle()));
 
-        if (leftDist <= 40) {
-          //var = STOP;
-          digitalWrite(28, LOW);
-          digitalWrite(29, LOW);
-          //delay(5000);
-            var = WALLTRACK;
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - 10) * 10) {
+
+          lastturn = true;
+          var = TURNLEFT;
         }
       }
 
       break;
 
-    case WALLTRACK:
+    case LASTWALL:
+      Serial.println("LASTWALL");
+      Serial.println(snappedHeading);
 
-      Serial.println(corner);
-
-      if (corner == 12) {
-        var = STOP;
-        Serial.println("hi");
-
-      } else if (cw) {
-        Serial.println("rightwalltrack");
-        Serial.println(turningAngle());
-        //Serial.println()
-        rightWallTrack(13, turningAngle());
-
-        if (rightDist > 40) {
-          cw = true;
-          corner++;
-          //var = STOP;
-          digitalWrite(28, LOW);
-          digitalWrite(29, LOW);
-          //delay(5000);
-            var = TURNRIGHT;
-        }
-
+      if (startLeft) {
+        leftWallTrack(leftstartDist, 0);
       } else {
-        leftWallTrack(13, -(turningAngle()));
-
-        if (leftDist > 40) {
-          cw = false;
-          corner++;
-          digitalWrite(28, LOW);
-          digitalWrite(29, LOW);
-          //delay(5000);
-            //var = STOP;
-            var = TURNLEFT;
-        }
+        rightWallTrack(rightstartDist, 0);
       }
 
 
+      if (frontDist <= frontStartDist  && abs(snappedHeading - turningAngle()) <= 5) {
+        Serial.println("yay");
+        var = STOP;
+      }
+
       break;
+
 
     case STOP:
+
       digitalWrite(28, LOW);
       digitalWrite(29, LOW);
       runPosition(zeroPosition);
