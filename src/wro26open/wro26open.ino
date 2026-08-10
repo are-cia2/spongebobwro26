@@ -18,6 +18,7 @@ float zeroPosition;
 float leftstartDist;
 float rightstartDist;
 float frontStartDist;
+float backStartDist;
 float startDist;
 unsigned long long initialTime;
 volatile const float gearRatio = (((40.0 / 24.0) / 1.4) / 1.67);
@@ -242,20 +243,30 @@ int turningAngle() {
 
 void leftWallTrack(int distance, int baseAngle) {
 
-  if (false) {  //leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0 || lefterror || righterror) {
+  if (leftDist > 900 || leftDist == 0 || lefterror ) {
+    Serial.println("trackheading");
+    /*
+    //Serial.print(leftDist);
+    //Serial.print("\t");
+    Serial.println(lefterror);
+    runPosition(zeroPosition);
+    digitalWrite(28, HIGH);
+    digitalWrite(29, HIGH);
+    */
+
     trackHeading(baseAngle);
 
   } else {
     digitalWrite(28, LOW);
     digitalWrite(29, HIGH);
-    float leftError = leftDist - distance;
+    float leftError = distance - leftDist; //swapped
     float targetAngle = constrain(leftError * 5, -22, 22) + baseAngle;
     Serial.print(stuffYaw);
     Serial.print("\t");
     Serial.print(leftError);
     Serial.print("\t");
     Serial.println(targetAngle);
-    runPosition(zeroPosition + getError(targetAngle));
+    runPosition(zeroPosition - getError(targetAngle));
     //Serial.print(leftError);
   }
 
@@ -267,7 +278,7 @@ void leftWallTrack(int distance, int baseAngle) {
 void rightWallTrack(int distance, int baseAngle) {
   Serial.println("rightwalltrack");
 
-  if (false) {  //leftDist > 900 || rightDist > 900 || leftDist == 0 || rightDist == 0 || lefterror || righterror) {
+  if (rightDist > 900 || rightDist == 0 || righterror) {
     trackHeading(baseAngle);
 
   } else {
@@ -323,6 +334,7 @@ void loop() {
 
       corner = 0;
       frontStartDist = frontDist;
+      backStartDist = backDist;
       leftstartDist = leftDist * 10;
       rightstartDist = rightDist * 10;
 
@@ -465,7 +477,7 @@ void loop() {
 
         if (frontDistCounter > 50 && rightDist > 40) {
 
-          if (corner == 3) {  //11
+          if (corner == 11) {  //11
             Serial.println("hello");
             initialpulseCountback = pulseCountback;
 
@@ -491,7 +503,7 @@ void loop() {
 
         if (frontDistCounter > 50 && leftDist > 40) {
 
-          if (corner == 3) {  //11
+          if (corner == 11) {  //11
             Serial.println("hello");
             initialpulseCountback = pulseCountback;
 
@@ -500,6 +512,7 @@ void loop() {
             corner++;
             var = TURNLEFT;
           }
+
           /*
           digitalWrite(28, LOW);
           digitalWrite(29, LOW);
@@ -517,22 +530,33 @@ void loop() {
       Serial.print("\t");
       Serial.println(rightstartDist - 10);
 
+      
       if (cw) {
         trackHeading(turningAngle());
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - 10)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - 150)) {
 
           lastturn = true;
           corner++;
+          /*
+          runPosition(zeroPosition);
+          digitalWrite(28, HIGH);
+          digitalWrite(29, HIGH);
+          */
           var = TURNRIGHT;
         }
       } else {
         trackHeading(-(turningAngle()));
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - 10)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - 150)) {
 
           lastturn = true;
           corner++;
+          /*
+          runPosition(zeroPosition);
+          digitalWrite(28, HIGH);
+          digitalWrite(29, HIGH);
+          */
           var = TURNLEFT;
         }
       }
@@ -549,7 +573,10 @@ void loop() {
         rightWallTrack(startDist, 0);
       }
 
-      if (frontDist <= frontStartDist) {
+      if (frontDist <= frontStartDist + 5 && backDist >= backStartDist - 5) { //CHANGE TOLERANCE
+        
+        var = STOP;
+        /*
         if (cw) {
           if (abs(snappedHeading - turningAngle()) <= 5) {
             Serial.println("yay");
@@ -562,6 +589,7 @@ void loop() {
             var = STOP;
           }
         }
+        */
       }
 
       break;

@@ -13,7 +13,7 @@ TFLI2C tflI2C;
 // =================================================================================
 // UNCOMMENT this line to calibrate the sensor and save offsets to QSPI Flash.
 // COMMENT out this line to run normally using saved offsets instantly on boot.
-// #define RUN_CALIBRATION
+//#define RUN_CALIBRATION
 
 // Base address map markers for the EEPROM storage emulator
 #define EEPROM_VALID_FLAG_ADDR 0
@@ -282,15 +282,22 @@ void loop1() {
     
   }
 
-  if (fmod(stuffYaw, 90) > 45) {
-    snappedHeading = fmod(stuffYaw, 90) - 90;
+  if (fmod(abs(stuffYaw), 90) > 45) {
+    snappedHeading = fmod(abs(stuffYaw), 90) - 90;
   } else {
-    snappedHeading = fmod(stuffYaw, 90);
+    snappedHeading = fmod(abs(stuffYaw), 90);
   }
 
   int checkLeftDist = tfVal(LEFTDS);
   if (checkLeftDist != 0) {
     leftDist = CORRECTED_DISTANCE(checkLeftDist);
+    /*
+    Serial.print(checkLeftDist);
+    Serial.print("\t");
+    Serial.print(snappedHeading);
+    Serial.print("\t");
+    Serial.println(leftDist);
+    */
 
   } else {
     Serial.println("lefterror");
@@ -355,4 +362,5 @@ void loop1() {
     Serial.print("\t");
     Serial.println(backDist);
     */
+    
 }
