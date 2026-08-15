@@ -11,6 +11,19 @@
 #define FINDWALL 7
 #define LASTWALL 8
 #define OVERSHOOT 9
+#define BASICOVERSHOOT 12
+
+//to change
+#define WALLTRACKDIST 13
+#define FRONTTHRES 50
+#define CORNERDETECT 40
+#define WALLFOUND 40
+#define BASICOVERSHOOTDIST 100
+#define OVERSHOOTDIST 150
+#define TURNTOLERANCE 3
+#define DISTTOLERANCE 5
+
+
 
 float leftAngle;
 float rightAngle;
@@ -305,10 +318,6 @@ void trackHeading(int angle) {
   runPosition(zeroPosition - angleError);
 }
 
-void loopy() {
-  rightWallTrack(13, 0);
-}
-
 void loop() {
 
   switch (var) {
@@ -353,12 +362,12 @@ void loop() {
       }
 
 
-      if (frontDist < 50) {
-        if (leftDist > 40) {
+      if (frontDist < FRONTTHRES) {
+        if (leftDist > CORNERDETECT) {
           Serial.println("left");
           cw = false;
-          corner++;
-          var = TURNLEFT;
+          initialpulseCountback = pulseCountback;
+          var = BASICOVERSHOOT;
 
           /*
           digitalWrite(28, LOW);
@@ -366,11 +375,11 @@ void loop() {
           delay(1000);
           */
 
-        } else if (rightDist > 40) {
+        } else if (rightDist > CORNERDETECT) {
           Serial.println("right");
           cw = true;
-          corner++;
-          var = TURNRIGHT;
+          initialpulseCountback = pulseCountback;
+          var = BASICOVERSHOOT;
 
           /*
           digitalWrite(28, LOW);
@@ -381,6 +390,29 @@ void loop() {
       }
 
       break;
+
+    case BASICOVERSHOOT:
+
+      if (cw) {
+        trackHeading(turningAngle());
+
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= BASICOVERSHOOTDIST) {
+          corner++;
+          
+          var = TURNRIGHT;
+        }
+      } else {
+        trackHeading(-(turningAngle()));
+
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= BASICOVERSHOOTDIST) {
+          corner++;
+
+          var = TURNLEFT;
+        }
+      }
+
+      break;
+      
 
     case TURNLEFT:
       frontDistCounter = 0;
@@ -393,7 +425,7 @@ void loop() {
       runPosition(leftAngle);
 
 
-      if (abs(stuffYaw + turningAngle()) < 3) {
+      if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
 
         if (lastturn) {
           var = LASTWALL;
@@ -424,7 +456,7 @@ void loop() {
       runPosition(rightAngle);
 
 
-      if (abs(stuffYaw - turningAngle()) < 3) {
+      if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
 
         if (lastturn) {
           var = LASTWALL;
@@ -450,14 +482,14 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (rightDist < 40 && millis() - initialTime >= 500) {
+        if (rightDist < WALLFOUND && millis() - initialTime >= 500) {
 
           var = WALLTRACK;
         }
       } else {
         trackHeading(-(turningAngle()));
 
-        if (leftDist < 40 && millis() - initialTime >= 500) {
+        if (leftDist < WALLFOUND && millis() - initialTime >= 500) {
 
           var = WALLTRACK;
         }
@@ -470,12 +502,12 @@ void loop() {
 
       if (cw) {
         //trackHeading(turningAngle());
-        rightWallTrack(13, turningAngle());
-        if (frontDist < 50) {
+        rightWallTrack(WALLTRACKDIST, turningAngle());
+        if (frontDist < FRONTTHRES) {
           frontDistCounter++;
         }
 
-        if (frontDistCounter > 50 && rightDist > 40) {
+        if (frontDistCounter > 50 && rightDist > CORNERDETECT) {
 
           if (corner == 11) {  //11
             Serial.println("hello");
@@ -484,8 +516,8 @@ void loop() {
             var = OVERSHOOT;
 
           } else {
-            corner++;
-            var = TURNRIGHT;
+            initialpulseCountback = pulseCountback;
+            var = BASICOVERSHOOT;
           }
 
           /*
@@ -496,12 +528,12 @@ void loop() {
         }
 
       } else {
-        leftWallTrack(13, -(turningAngle()));
-        if (frontDist < 50) {
+        leftWallTrack(WALLTRACKDIST, -(turningAngle()));
+        if (frontDist < FRONTTHRES) {
           frontDistCounter++;
         }
 
-        if (frontDistCounter > 50 && leftDist > 40) {
+        if (frontDistCounter > 50 && leftDist > CORNERDETECT) {
 
           if (corner == 11) {  //11
             Serial.println("hello");
@@ -509,8 +541,8 @@ void loop() {
 
             var = OVERSHOOT;
           } else {
-            corner++;
-            var = TURNLEFT;
+            initialpulseCountback = pulseCountback;
+            var = BASICOVERSHOOT;
           }
 
           /*
@@ -534,7 +566,7 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - 150)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - OVERSHOOTDIST)) {
 
           lastturn = true;
           corner++;
@@ -548,7 +580,7 @@ void loop() {
       } else {
         trackHeading(-(turningAngle()));
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - 150)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - OVERSHOOTDIST)) {
 
           lastturn = true;
           corner++;
@@ -573,7 +605,7 @@ void loop() {
         rightWallTrack(startDist, 0);
       }
 
-      if (frontDist <= frontStartDist + 5 && backDist >= backStartDist - 5) { //CHANGE TOLERANCE
+      if (frontDist <= frontStartDist + DISTTOLERANCE && backDist >= backStartDist - DISTTOLERANCE) { //CHANGE TOLERANCE
         
         var = STOP;
         /*

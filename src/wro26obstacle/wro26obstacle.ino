@@ -15,6 +15,17 @@
 #define RIGHTOBSTACLE 11
 #define BASICOVERSHOOT 12
 
+//to change
+#define WALLTRACKDIST 20
+#define FRONTTHRES 60
+#define CORNERDETECT 60
+#define WALLFOUND 60
+#define BASICOVERSHOOTDIST 150
+#define OVERSHOOTDIST 150
+#define TURNTOLERANCE 3
+#define DISTTOLERANCE 5
+#define OBSTACLETURN 45
+
 float leftAngle;
 float rightAngle;
 float zeroPosition;
@@ -247,9 +258,9 @@ int turningAngle() {
 int miniLeftAngle() {
   int angle = 0;
   if (cw) {
-    angle = turningAngle() - 45;
+    angle = turningAngle() - OBSTACLETURN;
   } else {
-    angle = turningAngle() + 45;
+    angle = turningAngle() + OBSTACLETURN;
   }
   
   while (angle >= 180) {
@@ -267,9 +278,9 @@ int miniLeftAngle() {
 int miniRightAngle() {
   int angle = 0;
   if (cw) {
-    angle = turningAngle() + 45;
+    angle = turningAngle() + OBSTACLETURN;
   } else {
-    angle = turningAngle() - 45;
+    angle = turningAngle() - OBSTACLETURN;
   }
   while (angle >= 180) {
     angle = angle - 360;
@@ -393,8 +404,8 @@ void loop() {
       }
 
 
-      if (frontDist < 60) {
-        if (leftDist > 60) {
+      if (frontDist < FRONTTHRES) {
+        if (leftDist > CORNERDETECT) {
           Serial.println("left");
           cw = false;
           initialpulseCountback = pulseCountback;
@@ -406,7 +417,7 @@ void loop() {
           delay(1000);
           */
 
-        } else if (rightDist > 60) {
+        } else if (rightDist > CORNERDETECT) {
           Serial.println("right");
           cw = true;
           initialpulseCountback = pulseCountback;
@@ -428,7 +439,7 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= 150) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= BASICOVERSHOOTDIST) {
           corner++;
           
           var = TURNRIGHT;
@@ -436,7 +447,7 @@ void loop() {
       } else {
         trackHeading(-(turningAngle()));
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= 150) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= BASICOVERSHOOTDIST) {
           corner++;
           /*
           digitalWrite(28, HIGH);
@@ -461,7 +472,7 @@ void loop() {
       runPosition(leftAngle);
 
 
-      if (abs(stuffYaw + turningAngle()) < 3) {
+      if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
 
         if (lastturn) {
           var = LASTWALL;
@@ -492,7 +503,7 @@ void loop() {
       runPosition(rightAngle);
 
 
-      if (abs(stuffYaw - turningAngle()) < 3) {
+      if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
 
         if (lastturn) {
           var = LASTWALL;
@@ -518,14 +529,14 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (rightDist < 60 && millis() - initialTime >= 500) {
+        if (rightDist < WALLFOUND && millis() - initialTime >= 500) {
 
           var = RIGHTOBSTACLE;
         }
       } else {
         trackHeading(-(turningAngle()));
 
-        if (leftDist < 60 && millis() - initialTime >= 500) {
+        if (leftDist < WALLFOUND && millis() - initialTime >= 500) {
 
           var = RIGHTOBSTACLE;
         }
@@ -549,11 +560,11 @@ void loop() {
           runPosition(leftAngle);
 
           if (cw) {
-            if (abs(stuffYaw - miniLeftAngle()) < 3) {
+            if (abs(stuffYaw - miniLeftAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 1;
             }
           } else {
-            if (abs(stuffYaw + miniLeftAngle()) < 3) {
+            if (abs(stuffYaw + miniLeftAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 1;
             }
           }
@@ -573,11 +584,11 @@ void loop() {
           runPosition(rightAngle);
 
           if (cw) {
-            if (abs(stuffYaw - miniRightAngle()) < 3) {
+            if (abs(stuffYaw - miniRightAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 2;
             }
           } else {
-            if (abs(stuffYaw + miniRightAngle()) < 3) {
+            if (abs(stuffYaw + miniRightAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 2;
             }
           }
@@ -597,12 +608,12 @@ void loop() {
           runPosition(leftAngle);
 
           if (cw) {
-            if (abs(stuffYaw - turningAngle()) < 3) {
+            if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 0;
               var = WALLTRACK;
             }
           } else {
-            if (abs(stuffYaw + turningAngle()) < 3) {
+            if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 0;
               var = WALLTRACK;
             }
@@ -626,11 +637,11 @@ void loop() {
           runPosition(rightAngle);
 
           if (cw) {
-            if (abs(stuffYaw - miniRightAngle()) < 3) {
+            if (abs(stuffYaw - miniRightAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 1;
             }
           } else {
-            if (abs(stuffYaw + miniRightAngle()) < 3) {
+            if (abs(stuffYaw + miniRightAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 1;
             }
           }
@@ -647,11 +658,11 @@ void loop() {
           runPosition(leftAngle);
 
           if (cw) {
-            if (abs(stuffYaw - miniLeftAngle()) < 3) {
+            if (abs(stuffYaw - miniLeftAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 2;
             }
           } else {
-            if (abs(stuffYaw + miniLeftAngle()) < 3) {
+            if (abs(stuffYaw + miniLeftAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 2;
             }
           }
@@ -671,12 +682,12 @@ void loop() {
           runPosition(rightAngle);
 
           if (cw) {
-            if (abs(stuffYaw - turningAngle()) < 3) {
+            if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 0;
               var = WALLTRACK;
             }
           } else {
-            if (abs(stuffYaw + turningAngle()) < 3) {
+            if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 0;
               var = WALLTRACK;
             }
@@ -693,12 +704,12 @@ void loop() {
 
       if (cw) {
         //trackHeading(turningAngle());
-        rightWallTrack(20, turningAngle());
-        if (frontDist < 60) {
+        rightWallTrack(WALLTRACKDIST, turningAngle());
+        if (frontDist < FRONTTHRES) {
           frontDistCounter++;
         }
 
-        if (frontDistCounter > 50 && rightDist > 60) {
+        if (frontDistCounter > 50 && rightDist > CORNERDETECT) {
 
           if (corner == 11) {  //11
             Serial.println("hello");
@@ -719,12 +730,12 @@ void loop() {
         }
 
       } else {
-        leftWallTrack(20, -(turningAngle()));
-        if (frontDist < 60) {
+        leftWallTrack(WALLTRACKDIST, -(turningAngle()));
+        if (frontDist < FRONTTHRES) {
           frontDistCounter++;
         }
 
-        if (frontDistCounter > 50 && leftDist > 60) {
+        if (frontDistCounter > 50 && leftDist > CORNERDETECT) {
 
           if (corner == 11) {  //11
             Serial.println("hello");
@@ -757,7 +768,7 @@ void loop() {
       if (cw) {
         trackHeading(turningAngle());
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - 150)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (rightstartDist - OVERSHOOTDIST)) {
 
           lastturn = true;
           corner++;
@@ -771,7 +782,7 @@ void loop() {
       } else {
         trackHeading(-(turningAngle()));
 
-        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - 150)) {
+        if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= (leftstartDist - OVERSHOOTDIST)) {
 
           lastturn = true;
           corner++;
@@ -796,7 +807,7 @@ void loop() {
         rightWallTrack(startDist, 0);
       }
 
-      if (frontDist <= frontStartDist + 5 && backDist >= backStartDist - 5) {  //CHANGE TOLERANCE
+      if (frontDist <= frontStartDist + DISTTOLERANCE && backDist >= backStartDist - DISTTOLERANCE) {  //CHANGE TOLERANCE
 
         var = STOP;
         /*
