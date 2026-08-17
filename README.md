@@ -65,7 +65,6 @@ The cells we use are the Molicel P26A featuring a maximum discharge current of 3
 
 ### Sensors Used
 ### TF-Luna
-<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/bb51aa1a-d5a6-4419-ae13-734e3cc286ee" /> <img width="200" height="200" alt="Screenshot 2026-05-17 122810" src="https://github.com/user-attachments/assets/e70e5065-1d03-4b63-9a36-33af93056812" /> 
 
 We used four sensors in total, in the four cardinal directions.
 
@@ -77,13 +76,13 @@ Per Sensor: Average Current Draw = 70mA, Peak Current Draw = 150mA
 Total: Average Current Draw = 280mA, Peak Current Draw = 600mA
 
 ### OpenMV AE3 Camera
+
 The camera is placed at the front of the robot. We previously used the front-mounted OpenMV H7 camera to detect traffic lights and parking spaces from a distance, giving our robot the lead time needed to make proactive steering decisions rather than relying on short-range colour sensors. Upgrading to the OpenMV AE3 preserves this long-range vision strategy while significantly elevating performance. Equipped with dual hardware Neural Processing Units (NPUs) and a 1 MP colour global shutter sensor, the AE3 processes machine-learning detection models with minimal latency and captures crystal-clear frames without motion blur while driving. Combined with low power consumption and onboard Time-of-Flight ranging, the OpenMV AE3 is more than sufficient for rapidly classifying visual targets and enabling swift, accurate navigation decisions during dynamic runs.
 
 #### Power Consumption
 While Idle: 24mA, Active Processing: 50mA to 60mA
 
 ### MPU6050
-<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/22af043a-207b-4dc4-9f9a-cec68f236765" />
 
 This sensor is an inertial measurement unit (IMU) that combines a 3‑axis gyroscope and a 3‑axis accelerometer. We chose to use this sensor because it is able to measure the robot’s orientation (angles and heading) accurately by tracking angular speed and displacement. Unlike a magnetic compass, which is affected by magnetic interference from motors, wiring, and the competition field, the MPU6050 provides stable readings that are not influenced by external magnetic fields.
 
