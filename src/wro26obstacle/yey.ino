@@ -80,10 +80,16 @@ volatile bool righterror = false;
 volatile bool fronterror = false;
 volatile bool backerror = false;
 
+volatile float leftGreenDist = -999;
+volatile float rightGreenDist = -999;
+volatile float leftRedDist = -999;
+volatile float rightRedDist = -999;
+
 void setup1() {
   board.begin();
   board.setPort(1);
   Serial.begin(115200);
+  Serial2.begin(115200);
   //while (!Serial)
   //  ;
 
@@ -272,14 +278,29 @@ int tfVal(byte port = LEFTDS) {
 
 void loop1() {
 
+  if (Serial2.available()) {
+    char yippee = Serial2.read();
+
+    if (yippee == 'a') {  //leftgreen
+      leftGreenDist = millis();
+
+    } else if (yippee == 'b') {  //rightgreen
+      rightGreenDist = millis();
+
+    } else if (yippee == 'c') {  //leftred
+      leftRedDist = millis();
+
+    } else if (yippee == 'd') {  //rightred
+      rightRedDist = millis();
+
+    }
+  }
+
   YPRData stuff = getYawPitchRoll();
 
   if (stuff.valid) {
     stuffYaw = stuff.yaw;
     stuffValid = stuff.valid;
-
-
-    
   }
 
   if (fmod(abs(stuffYaw), 90) > 45) {
@@ -324,7 +345,7 @@ void loop1() {
     Serial.println("backerror");
   }
   Serial.println(stuffYaw);
-/*
+  /*
    Serial.print("right: ");
     Serial.print(checkRightDist);
     Serial.print("\t");
@@ -335,14 +356,14 @@ void loop1() {
     Serial.print("\t");
     Serial.println(leftDist);
     */
-    
 
-    //Serial.println(pulseCountback);
-    
 
-  
+  //Serial.println(pulseCountback);
 
-    /*
+
+
+
+  /*
     Serial.print("left: ");
     Serial.print(checkLeftDist);
     Serial.print("\t");
@@ -363,5 +384,4 @@ void loop1() {
     Serial.print("\t");
     Serial.println(backDist);
     */
-    
 }
