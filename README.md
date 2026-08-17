@@ -31,41 +31,56 @@ _This part must be filled by participants with the technical clarifications abou
 ### Challenge 2
 
 ## Mobility Management
-For this competition, we have designed our own chassis and modelled it in Autodesk Fusion 360. We manufacture the vehicle and its components mainly using Fused Filament Fabrication (FFF) 3D printing with Polylactic Acid (PLA). We use off-the-shelf electrical components, such as motors from the LEGO MINDSTORMS EV3 kit, and sensors from various manufacturers, including ADD STUFF
+### Vehicle Design & Hardware Overview
+For this competition, we custom-designed our chassis in Autodesk Fusion 360 and manufactured the components primarily using Fused Filament Fabrication (FFF) 3D printing with Polylactic Acid (PLA). The platform integrates off-the-shelf electronics, including LEGO MINDSTORMS EV3 medium motors and a custom sensor suite: four TF-Luna LiDAR sensors for ranging, an MPU6500 6-DOF IMU for heading estimation, and an OpenMV Cam H7 (AE3) for visual navigation.
 
-### 3D printed body
-We decided to design and 3D print the required parts in Autodesk Fusion360 instead of using parts like Lego parts, since this would give us much more freedom and flexibility in terms of designing the components we needed.
+### 3D-Printed Chassis & Custom Components
+Rather than relying on modular building sets like LEGO, we opted to design and 3D print our custom components. This approach gave us complete freedom to tailor every part to our specific geometric and functional requirements.
 
-To design the 3D printed parts, we made use of Fusion 360, which combines Computer-Aided Design (CAD) and Computer-Aided Manufacturing (CAM) in one platform. This allows us to design and directly prepare our parts for printing. Fusion 360 is also known for its user-friendly interface, making it accessible for beginners while still offering advanced features for experienced users. The easy navigation of the software was useful to us as we could utilise it easily, and this also meant that our efforts could be replicated easily by interested beginners.
+We chose Autodesk Fusion 360 because it unifies Computer-Aided Design (CAD) and Computer-Aided Manufacturing (CAM) within a single workflow. Its intuitive interface allowed us to rapidly move from initial concepts to print-ready models. Beyond streamlining our process, using accessible software ensures that our design methodology can easily be replicated or modified by other students entering the field.
 
-The use of FFF 3D printing is one of the most affordable 3D printing technologies. We can create multiple prototypes during our trial-and-error stage to build the most suitable and efficient robot. FFF 3D printing also has the versatility that allows the creation of complex geometries and customised designs that may otherwise not be easily achievable through traditional manufacturing methods. This is particularly useful for designing intricate custom parts of our robot. Additionally, the polylactic acid (PLA) filament used is strong and rigid, essential for structural components of our robot (e.g. the drive base structure, motor mounts).
+FFF 3D printing with PLA offered several key advantages for our development cycle, such as:
+Cost-effective iteration
+Low material costs enabled us to rapidly prototype, test, and refine multiple iterations during our trial-and-error phase.
+Complex geometries
+FFF allowed us to produce intricate, custom geometries—such as specialised motor mounts and sensor housings—that would be difficult or costly to produce using traditional manufacturing techniques.
+Structural rigidity
+PLA provided the high tensile strength and stiffness required for high-stress structural elements like our drive base.
 
-Overall, Autodesk Fusion 350 and FFF 3D printing offer many benefits while building our robot for this competition.
-
-ADD PICS + DESC
+Ultimately, combining Fusion 360 with FFF printing gave us an agile, cost-effective, and highly customised foundation for our competition robot.
 
 ### Microcontroller
-We decided to make use of the EVN Alpha to control the robot. Compared to the Lego Mindstorms EV3 and NXT controllers, the EVN Alpha has 64 holes on 5 sides of the controller, compared to 32 holes on 3 sides of the other controllers, making it much easier to mount other parts on the EVN Alpha. Furthermore, the EVN Alpha is also much more compact, allowing the robot’s movements to be much more precise and accurate. The EVN Alpha also features a USB-C Port that is used to charge the batteries and download code, which is much more convenient compared to the EV3 or other NXT Controllers. Lastly, this controller has a total of 16 I2C channels, which eliminates the 4-port constraint of other controllers like the EV3 brick.
-
+We decided to make use of the EVN Alpha to control the robot. Compared to the Lego Mindstorms EV3 and NXT controllers, the EVN Alpha has 64 holes on 5 sides of the controller, compared to 32 holes on 3 sides of the other controllers, making it much easier to mount other parts on the EVN Alpha. Furthermore, the EVN Alpha is also much more compact, allowing the robot’s movements to be much more precise and accurate. The EVN Alpha also features a USB-C Port that is used to charge the batteries and download code, which is much more convenient compared to the EV3 or other NXT Controllers. Lastly, this controller has a total of 16 I2C channels, which eliminates the 4-port constraint of other controllers like the EV3 brick. 
 ### Movement
 
 ADD STUFF
 
 ## Power & Sense Management
 ### Power Source
-The robot is powered by 2 18650 cells. Each cell is rated for 4.2V when fully charged. They are connected in series to provide the EVN ALPHA with 8.4V. The motors run off unregulated battery power, consuming up to 780mA each at stall. There are 2 on-board regulators. The 3.3V regulator powers most of the system and can supply 3A. The current consumption of our 3.3V peripherals is under 1A. The 5V regulator only supplies the 5V rail and provides up to 3A. The only sensor we have attached to the 5V rail is the 2 Benewake sensors. While ranging, each sensor draws up to 600mA in a short pulse. This means that we are also well within the current capabilities of the regulator.
+The robot is powered by 2 18650 cells. Each cell is rated for 4.2v when fully charged. They are connected in series to provide the EVN ALPHA with 8.4v. The motors run off unregulated battery power, consuming up to 780mA each at stall. There are 2 on-board regulators. The 3.3v regulator powers most of the system, and is able to supply 3A. The current consumption of our 3.3V peripherals is under 1A. The 5V regulator only supplies the 5V rail and provides up to 3A. The only sensor we have attached to the 5V rail are the 2 Benewake sensors. While ranging, each sensor draws up to 600mA in a short pulse. This means that we are also well within the current capabilities of the regulator. 
 
-The cells we use are the Molicel P26A, featuring a maximum discharge current of 35A. At maximum load, our robot uses less than 2A, with the maximum contribution from the 2 medium motors. With a rated capacity of 2.6Ah, it can easily last more than an hour of continuous operation.
+The cells we use are the Molicel P26A featuring a maximum discharge current of 35A. At maximum load, our robot uses less than 2A with the maximum contribution from the 2 medium motors. With a rated capacity of 2.6Ah, it can easily last more than an hour of continuous operation.
 
 <img width="426" height="300" alt="v1_4_pt1" src="https://github.com/user-attachments/assets/c4eb360d-210f-4857-a4c8-51dcbb983d2b" />
 
 ### Sensors Used
-### TFLUNA
+### TF-Luna
 <img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/bb51aa1a-d5a6-4419-ae13-734e3cc286ee" /> <img width="200" height="200" alt="Screenshot 2026-05-17 122810" src="https://github.com/user-attachments/assets/e70e5065-1d03-4b63-9a36-33af93056812" /> 
 
-This sensor is a Time of Flight (TOF) distance measurement sensor. We chose to use this sensor because it accurately measures object distance by measuring how long the light takes to bounce back to the sensor. It is able to measure a target object that is up to 8m away with 1cm resolution, which is sufficient for wall tracking the inner wall of the field. This sensor is also very compact, which would make it very easy to incorporate into our robot design. It offers quick distance measurements, which is beneficial in terms of making turns at corners quickly. Instead of using 4 TF mini-S sensors, we chose 2, as they are very energy-efficient, which is especially helpful since our robot is battery-operated (power consumption: 70 mA). 
+We used four sensors in total, in the four cardinal directions.
 
-Compared to ultrasonic sensors, ToF sensors are less likely to be affected by environmental conditions and are also more accurate, especially in the range of a few centimetres. The sensors we are using also have a much narrower field of view than regular ultrasonic sensors, reducing the chance of multipath from the floor as the walls are far away compared to their height of just 10cm. Lastly, ultrasonic sensors also have a slower response time, and hence, we chose to use ToF sensors.
+This sensor is a Time of Flight (TOF) distance measurement sensor. We chose to use this sensor because it is able to measure object distance accurately by measuring how long the light takes to bounce back to the sensor. It is able to measure a target object that is up to 8m away with 1cm resolution, which is sufficient for wall tracking the inner wall of the field. This sensor is also very compact, which would make it very easy to incorporate into our robot design. It offers quick distance measurements, which is beneficial in terms of making turns at corners quickly.
+
+#### Power Consumption 
+Per Sensor: Average Current Draw = 70mA, Peak Current Draw = 150mA 
+
+Total: Average Current Draw = 280mA, Peak Current Draw = 600mA
+
+### OpenMV AE3 Camera
+The camera is placed at the front of the robot. We previously used the front-mounted OpenMV H7 camera to detect traffic lights and parking spaces from a distance, giving our robot the lead time needed to make proactive steering decisions rather than relying on short-range colour sensors. Upgrading to the OpenMV AE3 preserves this long-range vision strategy while significantly elevating performance. Equipped with dual hardware Neural Processing Units (NPUs) and a 1 MP colour global shutter sensor, the AE3 processes machine-learning detection models with minimal latency and captures crystal-clear frames without motion blur while driving. Combined with low power consumption and onboard Time-of-Flight ranging, the OpenMV AE3 is more than sufficient for rapidly classifying visual targets and enabling swift, accurate navigation decisions during dynamic runs.
+
+#### Power Consumption
+While Idle: 24mA, Active Processing: 50mA to 60mA
 
 ### MPU6050
 <img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/22af043a-207b-4dc4-9f9a-cec68f236765" />
@@ -74,7 +89,21 @@ This sensor is an inertial measurement unit (IMU) that combines a 3‑axis gyros
 
 The gyroscope measures angular speed, and orientation can be calculated as angular displacement = angular speed × time. However, since speed is not constant, small errors can accumulate over time. Normally, this makes gyroscopes less reliable if used alone. The MPU6050 solves this problem by combining gyro and accelerometer data inside its Digital Motion Processor (DMP). With library support, the chip itself calculates the heading, reducing drift and offloading computation from the robot’s main controller. This makes the angle calculation more precise and efficient.
 
-Compared to a compass, the MPU6050 is less likely to be affected by environmental conditions and provides smoother angle tracking. It also allows us to reset the robot’s reference angle at any point, which is useful for manoeuvres such as U‑turns. The sensor is compact and widely supported, making it easy to integrate into our robot design. Overall, the MPU6050 offers reliable heading information and consistent navigation, which is crucial for competition performance.
+#### Power Consumption
+Normal Operating Current: 3.8 mA, Gyroscope + Accelerometer, With DMP: 3.9 mA, Gyroscope Only: 3.6 mA, Accelerometer Only: 500 µA , Full-Chip Idle Mode: 5 µA
+
+Low-Power Accelerometer: 1.25 Hz = 10 µA, 5 Hz = 20 µA, 20 Hz = 70 µA, 40 Hz = 140 µA
+
+### Bill of Materials (USD)
+TF-Luna: $27.05 x4
+
+OpenMV AE3 Camera: $65.00 x1
+
+MPU6050: $2.94 x1
+
+EVN ALPHA: $128.00 x1
+
+Total: $304.14
 
 
 
