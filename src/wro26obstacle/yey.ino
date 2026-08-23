@@ -80,10 +80,10 @@ volatile bool righterror = false;
 volatile bool fronterror = false;
 volatile bool backerror = false;
 
-volatile float leftGreenDist = -999;
-volatile float rightGreenDist = -999;
-volatile float leftRedDist = -999;
-volatile float rightRedDist = -999;
+volatile bool leftGreen = false;
+volatile bool rightGreen = false;
+volatile bool leftRed = false;
+volatile bool rightRed = false;
 
 void setup1() {
   board.begin();
@@ -119,7 +119,7 @@ void setup1() {
     // Call the automated routine to calculate errors and save them to QSPI Flash
     handleCalibrationSequence();
 #else
-    // Pull previously stored offset data profiles out of QSPI flash instantly
+    // Pull previously stoRed offset data profiles out of QSPI flash instantly
     loadSavedOffsets();
 #endif
 
@@ -282,16 +282,28 @@ void loop1() {
     char yippee = Serial2.read();
 
     if (yippee == 'a') {  //leftgreen
-      leftGreenDist = millis();
+      leftGreen = true;
+      rightGreen = false;
+      leftRed = false;
+      rightRed = false;
 
     } else if (yippee == 'b') {  //rightgreen
-      rightGreenDist = millis();
+      leftGreen = false;
+      rightGreen = true;
+      leftRed = false;
+      rightRed = false;
 
-    } else if (yippee == 'c') {  //leftred
-      leftRedDist = millis();
+    } else if (yippee == 'c') {  //leftRed
+      leftGreen = false;
+      rightGreen = false;
+      leftRed = true;
+      rightRed = false;
 
-    } else if (yippee == 'd') {  //rightred
-      rightRedDist = millis();
+    } else if (yippee == 'd') {  //rightRed
+      leftGreen = false;
+      rightGreen = false;
+      leftRed = true;
+      rightRed = false;
 
     }
   }

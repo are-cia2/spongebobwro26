@@ -14,6 +14,9 @@
 #define LEFTOBSTACLE 10
 #define RIGHTOBSTACLE 11
 #define BASICOVERSHOOT 12
+#define BIGTURNANGLE 62
+#define SMALLTURNANGLE 45
+#define OBSTIME 1250
 
 //to change
 #define WALLTRACKDIST 40
@@ -24,7 +27,8 @@
 #define OVERSHOOTDIST 300
 #define TURNTOLERANCE 3
 #define DISTTOLERANCE 5
-#define OBSTACLETURN 45
+
+char yippee;
 
 float leftAngle;
 float rightAngle;
@@ -37,7 +41,7 @@ float startDist;
 unsigned long long initialTime;
 volatile const float gearRatio = (((40.0 / 24.0) / 1.4) / 1.67);
 
-int var = WALLTRACK;
+int var = START;
 int prevvar = START;
 int leftobstaclevar = 0;
 int rightobstaclevar = 0;
@@ -47,6 +51,7 @@ bool startLeft = true;
 bool lastturn = false;
 int corner = 0;
 int frontDistCounter = 0;
+int obstacleTurnAngle = 45;
 
 
 extern volatile float stuffYaw;
@@ -62,10 +67,10 @@ extern volatile bool righterror;
 extern volatile bool fronterror;
 extern volatile bool backerror;
 
-extern volatile float leftGreenDist;
-extern volatile float rightGreenDist;
-extern volatile float leftRedDist;
-extern volatile float rightRedDist;
+extern volatile bool leftGreen;
+extern volatile bool rightGreen;
+extern volatile bool leftRed;
+extern volatile bool rightRed;
 
 volatile int pulseCount;  // Rotation step count
 int SIG_A = 0;            // Pin A output
@@ -121,7 +126,7 @@ void A_CHANGEBACK() {                                 // Interrupt Service Routi
 
 
 void runPosition(int targetPosition) {
-  targetPosition = constrain(targetPosition, rightAngle - 5, leftAngle + 5);
+  targetPosition = constrain(targetPosition, rightAngle + 5, leftAngle - 5);
   int positionError = pulseCount - targetPosition;  //(headingError * 5.0) - (steer.getPosition() - STEER_CENTER);
   //Serial.println(positionError);
   int pwmRun = constrain(positionError * 22, -255, 255);
@@ -264,11 +269,11 @@ int turningAngle() {
 int miniLeftAngle() {
   int angle = 0;
   if (cw) {
-    angle = turningAngle() - OBSTACLETURN;
+    angle = turningAngle() - obstacleTurnAngle;
   } else {
-    angle = turningAngle() + OBSTACLETURN;
+    angle = turningAngle() + obstacleTurnAngle;
   }
-  
+
   while (angle >= 180) {
     angle = angle - 360;
   }
@@ -284,9 +289,9 @@ int miniLeftAngle() {
 int miniRightAngle() {
   int angle = 0;
   if (cw) {
-    angle = turningAngle() + OBSTACLETURN;
+    angle = turningAngle() + obstacleTurnAngle;
   } else {
-    angle = turningAngle() - OBSTACLETURN;
+    angle = turningAngle() - obstacleTurnAngle;
   }
   while (angle >= 180) {
     angle = angle - 360;
@@ -365,36 +370,8 @@ void trackHeading(int angle) {
   runPosition(zeroPosition - angleError);
 }
 
-void loopy() {
-  trackHeading(0);
-  if (millis() - leftGreenDist < 1000) {
-        prevvar = FIRSTWALL;
-        var = LEFTOBSTACLE;
-        Serial.println("leftgreen");
-
-      } else if (millis() - rightGreenDist < 1000) {
-        prevvar = FIRSTWALL;
-        var = LEFTOBSTACLE;
-        Serial.println("rightgreen");
-
-      } else if (millis() - leftRedDist < 1000) {
-        prevvar = FIRSTWALL;
-        var = RIGHTOBSTACLE;
-        Serial.println("leftred");
-
-      } else if (millis() - rightRedDist < 1000) {
-        prevvar = FIRSTWALL;
-        var = RIGHTOBSTACLE;
-        Serial.println("rightred");
-      } else {
-         digitalWrite(28, LOW);
-  digitalWrite(29, LOW);
-      }
-    
-}
 
 void loop() {
-
   switch (var) {
     case PRINT:
 
@@ -436,23 +413,27 @@ void loop() {
         rightWallTrack(startDist, 0);
       }
 
-      if (millis() - leftGreenDist < 1000) {
+      if (leftGreen) {
         prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("leftgreen");
 
-      } else if (millis() - rightGreenDist < 1000) {
+      } else if (rightGreen) {
         prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("rightgreen");
 
-      } else if (millis() - leftRedDist < 1000) {
+      } else if (leftRed) {
         prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("leftred");
 
-      } else if (millis() - rightRedDist < 1000) {
+      } else if (rightRed) {
         prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("rightred");
       }
@@ -462,7 +443,7 @@ void loop() {
           Serial.println("left");
           cw = false;
           initialpulseCountback = pulseCountback;
-          var = BASICOVERSHOOT;
+          var = STOP;
 
           /*
           digitalWrite(28, LOW);
@@ -474,14 +455,13 @@ void loop() {
           Serial.println("right");
           cw = true;
           initialpulseCountback = pulseCountback;
-          var = BASICOVERSHOOT;
+          var = STOP;
 
           /*
           digitalWrite(28, HIGH);
           digitalWrite(29, HIGH);
           delay(1000);
           */
-          
         }
       }
 
@@ -494,7 +474,7 @@ void loop() {
 
         if (abs(((pulseCountback * gearRatio) * ((PI * 40) / 360)) - ((initialpulseCountback * gearRatio) * ((PI * 40) / 360))) >= BASICOVERSHOOTDIST) {
           corner++;
-          
+
           var = TURNRIGHT;
         }
       } else {
@@ -512,7 +492,7 @@ void loop() {
       }
 
       break;
-      
+
 
     case TURNLEFT:
       frontDistCounter = 0;
@@ -595,23 +575,27 @@ void loop() {
         }
       }
 
-      if (millis() - leftGreenDist < 1000) {
-        prevvar = FINDWALL;
+      if (yippee == 'a') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("leftgreen");
 
-      } else if (millis() - rightGreenDist < 1000) {
-        prevvar = FINDWALL;
+      } else if (yippee == 'b') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("rightgreen");
 
-      } else if (millis() - leftRedDist < 1000) {
-        prevvar = FINDWALL;
+      } else if (yippee == 'c') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("leftred");
 
-      } else if (millis() - rightRedDist < 1000) {
-        prevvar = FINDWALL;
+      } else if (yippee == 'd') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("rightred");
       }
@@ -684,11 +668,19 @@ void loop() {
           if (cw) {
             if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 0;
+              leftGreen = false;
+              rightGreen = false;
+              leftRed = false;
+              rightRed = false;
               var = prevvar;
             }
           } else {
             if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
               leftobstaclevar = 0;
+              leftGreen = false;
+              rightGreen = false;
+              leftRed = false;
+              rightRed = false;
               var = prevvar;
             }
           }
@@ -758,11 +750,19 @@ void loop() {
           if (cw) {
             if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 0;
+              leftGreen = false;
+              rightGreen = false;
+              leftRed = false;
+              rightRed = false;
               var = prevvar;
             }
           } else {
             if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
               rightobstaclevar = 0;
+              leftGreen = false;
+              rightGreen = false;
+              leftRed = false;
+              rightRed = false;
               var = prevvar;
             }
           }
@@ -776,30 +776,34 @@ void loop() {
     case WALLTRACK:
       Serial.println("WALLTRACK");
 
-      if (millis() - leftGreenDist < 250) {
-        prevvar = WALLTRACK;
+      if (yippee == 'a') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("leftgreen");
 
-      } else if (millis() - rightGreenDist < 250) {
-        prevvar = WALLTRACK;
+      } else if (yippee == 'b') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("rightgreen");
 
-      } else if (millis() - leftRedDist < 250) {
-        prevvar = WALLTRACK;
+      } else if (yippee == 'c') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("leftred");
 
-      } else if (millis() - rightRedDist < 250) {
-        prevvar = WALLTRACK;
+      } else if (yippee == 'd') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("rightred");
       }
 
       if (cw) {
         //trackHeading(turningAngle());
-        //rightWallTrack(WALLTRACKDIST, turningAngle());
+        rightWallTrack(WALLTRACKDIST, turningAngle());
         if (frontDist < FRONTTHRES) {
           frontDistCounter++;
         }
@@ -823,8 +827,8 @@ void loop() {
           digitalWrite(29, LOW);
           delay(1000);
           */
-       // }
-      
+        // }
+
 
       } else {
         leftWallTrack(WALLTRACKDIST, -(turningAngle()));
@@ -898,23 +902,27 @@ void loop() {
       Serial.println("LASTWALL");
       Serial.println(snappedHeading);
 
-      if (millis() - leftGreenDist < 1000) {
-        prevvar = LASTWALL;
+      if (yippee == 'a') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("leftgreen");
 
-      } else if (millis() - rightGreenDist < 1000) {
-        prevvar = LASTWALL;
+      } else if (yippee == 'b') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = LEFTOBSTACLE;
         Serial.println("rightgreen");
 
-      } else if (millis() - leftRedDist < 1000) {
-        prevvar = LASTWALL;
+      } else if (yippee == 'c') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = SMALLTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("leftred");
 
-      } else if (millis() - rightRedDist < 1000) {
-        prevvar = LASTWALL;
+      } else if (yippee == 'd') {
+        prevvar = FIRSTWALL;
+        obstacleTurnAngle = BIGTURNANGLE;
         var = RIGHTOBSTACLE;
         Serial.println("rightred");
       }
