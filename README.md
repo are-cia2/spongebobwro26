@@ -115,25 +115,5 @@ Our robot was designed with a custom 3D-printed chassis, Ackermann steering geom
 
 👉 *Copy-paste from “Bill of Materials” table.*
 
----
-
-## Notes for Judges
-- **Mobility & Mechanical Design**: Includes torque-speed tradeoffs, Ackermann steering, and iteration cycles.
-- **Power & Sensor Architecture**: Power budget, regulator capacity, sensor placement justified against field geometry.
-- **Software Architecture**: State machine documented, obstacle strategy explained, functions modular.
-- **Systems Thinking**: Clear tradeoffs (torque vs speed, sensor placement vs noise), risk mitigation (sensor heat, battery overheating).
-- **Reproducibility**: STL files, wiring diagrams, and code included.
-
----
-
-## Estimated Rubric Score
-
-- **Mobility & Mechanical Design** → 6  
-- **Power & Sensor Architecture** → 6  
-- **Software Architecture & Obstacle Strategy** → 6  
-- **Systems Thinking & Engineering Decisions** → 6  
-- **Reproducibility & GitHub Quality** → 4 (needs stronger README + commit history)  
-
-**Total: ~28/30 points**
 
 
