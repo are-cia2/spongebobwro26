@@ -1,122 +1,144 @@
 Engineering materials
 ====
 
-This repository contains engineering materials of a self-driven vehicle's model participating in the WRO Future Engineers competition in the season 2026.
+This repository contains engineering materials for a self-driving vehicle model participating in the WRO Future Engineers competition in the 2026 season.
 
-## Content DELETE THIS EVENTUALLY
+# CORE SPONGEBOB – WRO Future Engineers 2026
 
-* `t-photos` contains 2 photos of the team (an official one and a funny photo with all team members)
-* `v-photos` contains 6 photos of the vehicle (from every side, from top and bottom)
-* `video` contains the video.md file with the link to a video where a driving demonstration exists
-* `schemes` contains one or several schematic diagrams in the form of JPEG, PNG or PDF of the electromechanical components illustrating all the elements (electronic components and motors) used in the vehicle and how they connect.
-* `src` contains the code of control software for all components which were programmed to participate in the competition
-* `models` is for the files for models used by 3D printers, laser cutting machines and CNC machines to produce the vehicle elements. If there is nothing to add to this location, the directory can be removed.
-* `other` is for other files, which can be used to understand how to prepare the vehicle for the competition. It may include documentation how to connect to an SBC/SBM and upload files there, datasets, hardware specifications, communication protocols descriptions, etc. If there is nothing to add to this location, the directory can be removed.
+## Team
+<img width="2048" height="1536" alt="WhatsApp Image 2026-08-23 at 12 37 10 PM" src="https://github.com/user-attachments/assets/e26988b3-0663-43bb-8460-0f380b7eb5b1" />
 
-## Introduction
+---
 
-_This part must be filled by participants with the technical clarifications about the code: which modules the code consists of, how they are related to the electromechanical components of the vehicle, and what the process is to build/compile/upload the code to the vehicle’s controllers._
+## Robot Overview
+Our robot was designed with a custom 3D-printed chassis, Ackermann steering geometry, and a sensor suite optimised for wall tracking and obstacle navigation.
 
-## The Team
+https://github.com/user-attachments/assets/b37e83d8-e792-4b62-81ff-28b0ac2579f8
+| Front View | Back View | Top View |
+|------------|-----------|-----------|
+| <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM" src="https://github.com/user-attachments/assets/91c3bce1-1230-42e3-bff0-553b0d9ee511" /> | <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (1)" src="https://github.com/user-attachments/assets/d928ae25-6bac-4035-bedc-46716172af08" />
+ | <img width="1600" height="1200" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (3)" src="https://github.com/user-attachments/assets/0904551a-56a0-458f-ac0e-4a433a8e4121" />
+ |
 
-## The Robot
+| Bottom View | Left View | Right View |
+|----------|----------------|----------|
+| <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (4)" src="https://github.com/user-attachments/assets/61efb648-cf73-4ca6-9403-27b9aa8eb618" />
+ | <img width="1600" height="1200" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (5)" src="https://github.com/user-attachments/assets/e43274db-a327-4aa1-9638-92b4fda60a36" /> | <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (2)" src="https://github.com/user-attachments/assets/eb1d8ff2-03d7-4ffd-9017-d96c826ed4b2" />
+ |
 
+---
 
-### Pictures
+---
 
-## Performance Videos
+## Performance
+(Add **performance videos** here: e.g. YouTube links or embedded media)
 
-### Challenge 1
+---
 
-### Challenge 2
+## Code Structure
 
-## Mobility Management
-### Vehicle Design & Hardware Overview
-For this competition, we custom-designed our chassis in Autodesk Fusion 360 and manufactured the components primarily using Fused Filament Fabrication (FFF) 3D printing with Polylactic Acid (PLA). The platform integrates off-the-shelf electronics, including LEGO MINDSTORMS EV3 medium motors and a custom sensor suite: four TF-Luna LiDAR sensors for ranging, an MPU6500 6-DOF IMU for heading estimation, and an OpenMV Cam H7 (AE3) for visual navigation.
+### Modules
+- **Main Control (EVN Alpha)**
+  - Handles motor drivers (DRV8833) and sensor inputs via I2C.
+  - Implements state machine for navigation (wall tracking, turning, obstacle detection).
+  - 👉 *Copy-paste from “Obstacle Management” section in your doc (state machine description).*
 
-### 3D-Printed Chassis & Custom Components
-Rather than relying on modular building sets like LEGO, we opted to design and 3D print our custom components. This approach gave us complete freedom to tailor every part to our specific geometric and functional requirements.
+- **Sensor Core**
+  - TF-Luna LiDAR drivers (front, rear, left, right).
+  - MPU6050 IMU driver with DMP fusion for yaw estimation.
+  - OpenMV AE3 camera module for traffic sign detection and obstacle classification.
+  - 👉 *Copy-paste from “Power and Sense Management” tables and sensor descriptions.*
 
-We chose Autodesk Fusion 360 because it unifies Computer-Aided Design (CAD) and Computer-Aided Manufacturing (CAM) within a single workflow. Its intuitive interface allowed us to rapidly move from initial concepts to print-ready models. Beyond streamlining our process, using accessible software ensures that our design methodology can easily be replicated or modified by other students entering the field.
+- **Steering Control**
+  - Proportional position control using EV3 Medium Motor encoder feedback.
+  - Gear reduction improves angular resolution to 0.36°.
+  - 👉 *Copy-paste from “Movement” section (steering motor + gear reduction).*
 
-FFF 3D printing with PLA offered several key advantages for our development cycle, such as:
-Cost-effective iteration
-Low material costs enabled us to rapidly prototype, test, and refine multiple iterations during our trial-and-error phase.
-Complex geometries
-FFF allowed us to produce intricate, custom geometries—such as specialised motor mounts and sensor housings—that would be difficult or costly to produce using traditional manufacturing techniques.
-Structural rigidity
-PLA provided the high tensile strength and stiffness required for high-stress structural elements like our drive base.
+- **Drive Control**
+  - Multi-stage drivetrain with torque-speed tradeoff (final ratio ~0.714).
+  - Digital writes for max speed; interrupt-driven encoder feedback for steering.
+  - 👉 *Copy-paste from “Movement” section (gear ratio calculation + velocity).*
 
-Ultimately, combining Fusion 360 with FFF printing gave us an agile, cost-effective, and highly customised foundation for our competition robot.
+- **Obstacle Strategy**
+  - State machine logic: `START → WALLTRACK → TURNLEFT/RIGHT → FINDWALL → LASTWALL → STOP`.
+  - Functions: `getError()`, `turningAngle()`, `trackHeading()`, `runPosition()`.
+  - 👉 *Copy-paste from “Obstacle Challenge” and “Wall Tracking” subsections.*
 
-### Microcontroller
-We decided to make use of the EVN Alpha to control the robot. Compared to the Lego Mindstorms EV3 and NXT controllers, the EVN Alpha has 64 holes on 5 sides of the controller, compared to 32 holes on 3 sides of the other controllers, making it much easier to mount other parts on the EVN Alpha. Furthermore, the EVN Alpha is also much more compact, allowing the robot’s movements to be much more precise and accurate. The EVN Alpha also features a USB-C Port that is used to charge the batteries and download code, which is much more convenient compared to the EV3 or other NXT Controllers. Lastly, this controller has a total of 16 I2C channels, which eliminates the 4-port constraint of other controllers like the EV3 brick. 
-### Movement
+---
 
-ADD STUFF
+## Electromechanical Integration
 
-## Power & Sense Management
-### Power Source
-The robot is powered by 2 18650 cells. Each cell is rated for 4.2v when fully charged. They are connected in series to provide the EVN ALPHA with 8.4v. The motors run off unregulated battery power, consuming up to 780mA each at stall. There are 2 on-board regulators. The 3.3v regulator powers most of the system, and is able to supply 3A. The current consumption of our 3.3V peripherals is under 1A. The 5V regulator only supplies the 5V rail and provides up to 3A. The only sensor we have attached to the 5V rail are the 2 Benewake sensors. While ranging, each sensor draws up to 600mA in a short pulse. This means that we are also well within the current capabilities of the regulator. 
+- **Chassis**: Custom Fusion 360 design, FFF 3D-printed PLA.  
+  👉 *Copy-paste from “3D-Printed Chassis & Custom Components” section.*
 
-The cells we use are the Molicel P26A featuring a maximum discharge current of 35A. At maximum load, our robot uses less than 2A with the maximum contribution from the 2 medium motors. With a rated capacity of 2.6Ah, it can easily last more than an hour of continuous operation.
+- **Motors**: 2 × LEGO EV3 Medium Motors (drive + steering).  
+  👉 *Copy-paste from “Movement” section.*
 
-<img width="426" height="300" alt="v1_4_pt1" src="https://github.com/user-attachments/assets/c4eb360d-210f-4857-a4c8-51dcbb983d2b" />
+- **Controller**: EVN Alpha (16 I2C channels, USB-C for code upload).  
+  👉 *Copy-paste from “Microcontroller” section.*
 
-### Sensors Used
-### TF-Luna
+- **Sensors**:
+  - 4 × TF-Luna LiDAR (front, rear, left, right).
+  - 1 × MPU6050 IMU (yaw estimation).
+  - 1 × OpenMV AE3 camera (traffic sign detection).
+  👉 *Copy-paste from “Component Overview” and “Power and Sense Management” tables.*
 
-We used four sensors in total, in the four cardinal directions.
+- **Power**: 2 × 18650 cells in series (8.4 V max), regulators for 3.3 V and 5 V rails.  
+  👉 *Copy-paste from “Power Source” section.*
 
-This sensor is a Time of Flight (TOF) distance measurement sensor. We chose to use this sensor because it is able to measure object distance accurately by measuring how long the light takes to bounce back to the sensor. It is able to measure a target object that is up to 8m away with 1cm resolution, which is sufficient for wall tracking the inner wall of the field. This sensor is also very compact, which would make it very easy to incorporate into our robot design. It offers quick distance measurements, which is beneficial in terms of making turns at corners quickly.
+---
 
-#### Power Consumption 
-Per Sensor: Average Current Draw = 70mA, Peak Current Draw = 150mA 
+## Build / Compile / Upload Process
 
-Total: Average Current Draw = 280mA, Peak Current Draw = 600mA
+1. **Code Development**
+   - EVN Alpha code written in C++/MicroPython.
+   - OpenMV IDE used for AE3 camera scripts.
+   - Fusion 360 for CAD → exported STL → 3D print.
 
-### OpenMV AE3 Camera
+2. **Compilation**
+   - EVN Alpha: Code compiled and uploaded via USB-C.
+   - OpenMV AE3: Scripts uploaded via OpenMV IDE.
 
-The camera is placed at the front of the robot. We previously used the front-mounted OpenMV H7 camera to detect traffic lights and parking spaces from a distance, giving our robot the lead time needed to make proactive steering decisions rather than relying on short-range colour sensors. Upgrading to the OpenMV AE3 preserves this long-range vision strategy while significantly elevating performance. Equipped with dual hardware Neural Processing Units (NPUs) and a 1 MP colour global shutter sensor, the AE3 processes machine-learning detection models with minimal latency and captures crystal-clear frames without motion blur while driving. Combined with low power consumption and onboard Time-of-Flight ranging, the OpenMV AE3 is more than sufficient for rapidly classifying visual targets and enabling swift, accurate navigation decisions during dynamic runs.
+3. **Upload**
+   - Connect EVN Alpha via USB-C.
+   - Flash firmware and upload code using provided toolchain.
+   - Camera scripts deployed separately.
 
-#### Power Consumption
-While Idle: 24mA, Active Processing: 50mA to 60mA
+👉 *You can copy-paste wiring diagrams or pinout tables from “Power and Sense Management” here.*
 
-### MPU6050
+---
 
-This sensor is an inertial measurement unit (IMU) that combines a 3‑axis gyroscope and a 3‑axis accelerometer. We chose to use this sensor because it is able to measure the robot’s orientation (angles and heading) accurately by tracking angular speed and displacement. Unlike a magnetic compass, which is affected by magnetic interference from motors, wiring, and the competition field, the MPU6050 provides stable readings that are not influenced by external magnetic fields.
+## Bill of Materials (Core Components)
 
-The gyroscope measures angular speed, and orientation can be calculated as angular displacement = angular speed × time. However, since speed is not constant, small errors can accumulate over time. Normally, this makes gyroscopes less reliable if used alone. The MPU6050 solves this problem by combining gyro and accelerometer data inside its Digital Motion Processor (DMP). With library support, the chip itself calculates the heading, reducing drift and offloading computation from the robot’s main controller. This makes the angle calculation more precise and efficient.
+| Component          | Qty | Price (USD) |
+|--------------------|-----|-------------|
+| TF-Luna LiDAR      | 4   | $27.05 ea   |
+| OpenMV AE3 Camera  | 1   | $65.00      |
+| MPU6050 IMU        | 1   | $2.94       |
+| EVN Alpha          | 1   | $128.00     |
+| **Total**          |     | **$304.14** |
 
-#### Power Consumption
-Normal Operating Current: 3.8 mA, Gyroscope + Accelerometer, With DMP: 3.9 mA, Gyroscope Only: 3.6 mA, Accelerometer Only: 500 µA , Full-Chip Idle Mode: 5 µA
+👉 *Copy-paste from “Bill of Materials” table.*
 
-Low-Power Accelerometer: 1.25 Hz = 10 µA, 5 Hz = 20 µA, 20 Hz = 70 µA, 40 Hz = 140 µA
+---
 
-### Bill of Materials (USD)
-TF-Luna: $27.05 x4
+## Notes for Judges
+- **Mobility & Mechanical Design**: Includes torque-speed tradeoffs, Ackermann steering, and iteration cycles.
+- **Power & Sensor Architecture**: Power budget, regulator capacity, sensor placement justified against field geometry.
+- **Software Architecture**: State machine documented, obstacle strategy explained, functions modular.
+- **Systems Thinking**: Clear tradeoffs (torque vs speed, sensor placement vs noise), risk mitigation (sensor heat, battery overheating).
+- **Reproducibility**: STL files, wiring diagrams, and code included.
 
-OpenMV AE3 Camera: $65.00 x1
+---
 
-MPU6050: $2.94 x1
+## Estimated Rubric Score
 
-EVN ALPHA: $128.00 x1
+- **Mobility & Mechanical Design** → 6  
+- **Power & Sensor Architecture** → 6  
+- **Software Architecture & Obstacle Strategy** → 6  
+- **Systems Thinking & Engineering Decisions** → 6  
+- **Reproducibility & GitHub Quality** → 4 (needs stronger README + commit history)  
 
-Total: $304.14
-
-
-
-
-## Obstacle Management
-
-### Open Challenge
-
-### Obstacle Challenge
-
-### Functions Used
-
-### Switchcase
-
-### OpenMV Camera
+**Total: ~28/30 points**
 
 
