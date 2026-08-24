@@ -6,7 +6,7 @@ This repository contains engineering materials for a self-driving vehicle model 
 # CORE SPONGEBOB – WRO Future Engineers 2026
 
 ## Team
-<img width="800" height="500" alt="WhatsApp Image 2026-08-23 at 12 37 10 PM" src="https://github.com/user-attachments/assets/e26988b3-0663-43bb-8460-0f380b7eb5b1" />
+<img width="1024" height="768" alt="WhatsApp Image 2026-08-23 at 12 37 10 PM" src="https://github.com/user-attachments/assets/e26988b3-0663-43bb-8460-0f380b7eb5b1" />
 
 ---
 
