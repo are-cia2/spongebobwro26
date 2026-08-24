@@ -15,16 +15,13 @@ Our robot was designed with a custom 3D-printed chassis, Ackermann steering geom
 
 ## Robot Pictures
 
-| Front View | Back View | Top View |
+| Front View | Left View | Right View |
 |------------|-----------|----------|
 | <img src="https://github.com/user-attachments/assets/91c3bce1-1230-42e3-bff0-553b0d9ee511" alt="Front View" width="250"/> | <img src="https://github.com/user-attachments/assets/d928ae25-6bac-4035-bedc-46716172af08" alt="Back View" width="250"/> | <img src="https://github.com/user-attachments/assets/0904551a-56a0-458f-ac0e-4a433a8e4121" alt="Top View" width="250"/> |
 
-| Bottom View | Left View | Right View |
+| Top View | Bottom View | Back View |
 |-------------|-----------|------------|
 | <img src="https://github.com/user-attachments/assets/61efb648-cf73-4ca6-9403-27b9aa8eb618" alt="Bottom View" width="250"/> | <img src="https://github.com/user-attachments/assets/e43274db-a327-4aa1-9638-92b4fda60a36" alt="Left View" width="250"/> | <img src="https://github.com/user-attachments/assets/eb1d8ff2-03d7-4ffd-9017-d96c826ed4b2" alt="Right View" width="250"/> |
-
-
----
 
 ---
 
