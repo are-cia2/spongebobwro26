@@ -13,18 +13,16 @@ This repository contains engineering materials for a self-driving vehicle model 
 ## Robot Overview
 Our robot was designed with a custom 3D-printed chassis, Ackermann steering geometry, and a sensor suite optimised for wall tracking and obstacle navigation.
 
-https://github.com/user-attachments/assets/b37e83d8-e792-4b62-81ff-28b0ac2579f8
+## Robot Pictures
+
 | Front View | Back View | Top View |
-|------------|-----------|-----------|
-| <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM" src="https://github.com/user-attachments/assets/91c3bce1-1230-42e3-bff0-553b0d9ee511" /> | <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (1)" src="https://github.com/user-attachments/assets/d928ae25-6bac-4035-bedc-46716172af08" />
- | <img width="1600" height="1200" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (3)" src="https://github.com/user-attachments/assets/0904551a-56a0-458f-ac0e-4a433a8e4121" />
- |
+|------------|-----------|----------|
+| <img src="https://github.com/user-attachments/assets/91c3bce1-1230-42e3-bff0-553b0d9ee511" alt="Front View" width="250"/> | <img src="https://github.com/user-attachments/assets/d928ae25-6bac-4035-bedc-46716172af08" alt="Back View" width="250"/> | <img src="https://github.com/user-attachments/assets/0904551a-56a0-458f-ac0e-4a433a8e4121" alt="Top View" width="250"/> |
 
 | Bottom View | Left View | Right View |
-|----------|----------------|----------|
-| <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (4)" src="https://github.com/user-attachments/assets/61efb648-cf73-4ca6-9403-27b9aa8eb618" />
- | <img width="1600" height="1200" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (5)" src="https://github.com/user-attachments/assets/e43274db-a327-4aa1-9638-92b4fda60a36" /> | <img width="1200" height="1600" alt="WhatsApp Image 2026-08-25 at 1 30 28 AM (2)" src="https://github.com/user-attachments/assets/eb1d8ff2-03d7-4ffd-9017-d96c826ed4b2" />
- |
+|-------------|-----------|------------|
+| <img src="https://github.com/user-attachments/assets/61efb648-cf73-4ca6-9403-27b9aa8eb618" alt="Bottom View" width="250"/> | <img src="https://github.com/user-attachments/assets/e43274db-a327-4aa1-9638-92b4fda60a36" alt="Left View" width="250"/> | <img src="https://github.com/user-attachments/assets/eb1d8ff2-03d7-4ffd-9017-d96c826ed4b2" alt="Right View" width="250"/> |
+
 
 ---
 
