@@ -35,8 +35,6 @@ Open challenge: https://youtu.be/y6kY5s8JME0?si=EC7A0Hvez6JDP7O8
 
 Obstacle challenge: https://youtu.be/tH5Cm9ztciE?si=E40YTndC0-gIS9aX
 
-subsections.*
-
 ---
 
 ## Mobility & Mechanical Design
