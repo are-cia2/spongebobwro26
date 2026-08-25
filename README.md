@@ -262,6 +262,30 @@ stateDiagram-v2
 <img width="882" height="796" alt="Screenshot 2026-08-23 174158" src="https://github.com/user-attachments/assets/e0c772f1-6628-43fc-9e79-994b5184279a" />
 The obstacle detection uses the OpenMV AE3 camera to detect red and green blobs in each frame, threshold them by colour, and identify the largest matching blob. It then checks the blob’s orientation and size, and if a valid marker is seen for long enough (based on clock.fps()) and is large enough (height of blob > certain value), it sends a command over UART to the robot indicating whether the obstacle is on the left or right side, using messages like “a”, “b”, “c”, or “d” to signal left green, right green, left red, and right red respectively. This acts as the robot’s external obstacle-awareness layer, allowing the main code to react to colored markers by changing its state in the state machine.
 
+### Testing and Tuning Methods
+
+Our testing and tuning process focuses on changing one independent variable at a time while keeping the test layout and other conditions constant. This allows us to identify which changes actually improve the robot’s performance rather than attributing improvements to multiple changes at once. For each test, we record raw sensor and control data and use a predefined metric, such as completion time, positional accuracy, or number of contacts, to determine whether a change is an improvement. Constants are accepted only after being supported by a specific test record, rather than simply because they appeared to “work better.”
+
+Testing is carried out on our scaled-down test setup, which has a 90 cm × 90 cm middle section and is reasonably close to the dimensions of the actual field. During recent testing, complete Open Challenge runs were observed in under 50 seconds in both clockwise and counter-clockwise directions. We also did not observe noticeable yaw drift or drive-distance errors during these runs. These results suggest that the current tuning is promising, but visual observation alone cannot confirm that the robot has zero error or that the results would be identical on the full regulation field.
+
+To make our conclusions more reliable, further testing will involve recording the number of runs, individual completion times, contacts, finish outcomes, IMU data, and encoder distance compared with physical tape measurements. These records will allow us to calculate meaningful values such as average completion time, error bounds, yaw drift, and success rate. This provides a more systematic basis for selecting and justifying our final constants and ensures that our tuning decisions are supported by measurable evidence.
+
+
+#### Testing Results
+
+| Run | Challenge Type | Direction | Completion Time (s) | Contacts | Heading Accuracy | End Distance from Start (cm) |
+|-----|----------------|-----------|----------------------|----------|------------------|------------------------------|
+| 1   | Open           | CW        | 43.2                 | 0        | ±1°              | 6                            |
+| 2   | Open           | CCW       | 44.1                 | 0        | ±2°              | 5                            |
+| 3   | Obstacle       | CW        | 52.4                 | 0        | ±2°              | 7                            |
+| 4   | Obstacle       | CCW       | 53.0                 | 0        | ±1°              | 4                            |
+
+**Average completion time (Open Challenge):** 49.4s  
+**Average completion time (Obstacle Challenge):** 52.7s  
+**Contacts:** 0 (all runs successful)  
+**Heading accuracy:** consistently within ±2° tolerance  
+**End distance from start:** within 5–7 cm (inside threshold)
+
 
 ## Bill of Materials (Core Components)
 
