@@ -61,10 +61,12 @@ The chassis features a narrow front profile and short wheelbase to maximise stee
 ### Torque-Speed Trade-Off 
 We explicitly calculated torque and speed trade‑offs by testing three gear ratios (1:1, 1:2, and 1:3). The 1:2 ratio provided the best balance, delivering sufficient torque for acceleration while maintaining a stable top speed on both 1000 mm and 600 mm track widths. Testing showed that higher torque (1:3) caused excessive wheel spin, while higher speed (1:1) reduced control in corners. Iteration confirmed that Ackermann steering paired with the 1:2 gearing reduced corner drift by 18% compared to skid steering, ensuring smoother lap times and consistent performance across track variations.
 
-**Controller**: EVN Alpha (16 I2C channels, USB-C for code upload).  
+### Controller
+**EVN Alpha (16 I2C channels, USB-C for code upload)**
 We decided to make use of the EVN Alpha to control the robot. Compared to the LEGO Mindstorms EV3 and NXT controllers, the EVN Alpha has 64 holes on 5 sides of the controller, compared to 32 holes on 3 sides of the other controllers, making it much easier to mount other parts on the EVN Alpha. Furthermore, the EVN Alpha is also much more compact, allowing the robot’s movements to be much more precise and accurate. The EVN Alpha also features a USB-C Port that is used to charge the batteries and download code, which is much more convenient compared to the EV3 or other NXT Controllers. Lastly, this controller has a total of 16 I2C channels, which eliminates the 4-port constraint of other controllers like the EV3 brick. 
 
-**Motors**: 2 × LEGO EV3 Medium Motors (drive + steering).  
+### Motors
+**2 × LEGO EV3 Medium Motors (drive + steering)**
 Our robot uses 2 LEGO MINDSTORMS EV3 medium motors due to their lightweight, compact form factor, and high speed compared to EV3 large motors and NXT motors. 
 
 *Drive Mechanism and Differential*
@@ -91,6 +93,7 @@ To shorten the wheelbase as much as possible, the long medium motor is mounted d
 - Third Stage (12:20): A small-to-big stage providing the final speed reduction to the wheels. Although a faster 20:12 configuration was initially tested, it proved too fast for stable control, prompting a switch to the 12:20 setup to prioritise torque and control.
 
 *Steering Mechanism*
+
 The steering actuator is a LEGO MINDSTORMS EV3 Medium Motor on EVN motor port 3.
 Encoder channels on GPIO 14 and 15 provide position feedback. At startup, the current program finds both mechanical limits, calculates their midpoint, and applies a five-counter centre offset. During driving, a proportional position controller maps steering encoder error to DRV8833 PWM effort.
 
@@ -109,6 +112,7 @@ measurement.
   - 4 × TF-Luna LiDAR (front, rear, left, right).
     
 **1 x MPU6050 IMU (yaw estimation)**
+
 The IMU mount began as a carrying handle but was repurposed to hold the IMU level and away from motor heat, preserving sensor accuracy. The front sensor mount fixes the camera and forward LiDAR in a repeatable geometry, while side and rear LiDAR mounts elevate the sensors to reduce floor reflections and maintain clear views of the field walls. This placement strategy was iterated three times, with final mounting heights chosen to maximise detection reliability at the sensors’ 3‑meter range.
 
 **1 × OpenMV AE3 camera (traffic sign detection)**
