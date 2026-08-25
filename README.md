@@ -61,10 +61,12 @@ We explicitly calculated torque and speed trade‑offs by testing three gear rat
 
 ### Controller
 **EVN Alpha (16 I2C channels, USB-C for code upload)**
+
 We decided to make use of the EVN Alpha to control the robot. Compared to the LEGO Mindstorms EV3 and NXT controllers, the EVN Alpha has 64 holes on 5 sides of the controller, compared to 32 holes on 3 sides of the other controllers, making it much easier to mount other parts on the EVN Alpha. Furthermore, the EVN Alpha is also much more compact, allowing the robot’s movements to be much more precise and accurate. The EVN Alpha also features a USB-C Port that is used to charge the batteries and download code, which is much more convenient compared to the EV3 or other NXT Controllers. Lastly, this controller has a total of 16 I2C channels, which eliminates the 4-port constraint of other controllers like the EV3 brick. 
 
 ### Motors
 **2 × LEGO EV3 Medium Motors (drive + steering)**
+
 Our robot uses 2 LEGO MINDSTORMS EV3 medium motors due to their lightweight, compact form factor, and high speed compared to EV3 large motors and NXT motors. 
 
 *Drive Mechanism and Differential*
