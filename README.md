@@ -182,6 +182,9 @@ The main subsystem interfaces are deliberately narrow. Core 1 is the only core t
 
 ## Code Structure
 
+### Setup
+The setup procedure is a calibration-and-initialisation routine: the code first configures the encoder interrupts for both steering channels, initialises the motor pins, and then sweeps the steering mechanism to find the left and right mechanical bounds. It records those positions as leftAngle and rightAngle, calculates the centre zeroPosition, and waits for the user button/input before starting the run. After that, it launches the sensor/IMU core (Core 1), allowing the main loop to use live yaw and distance data from the MPU and ToF sensors while continuously steering toward the required wall-tracking and turning states. In other words, the robot is first mechanically centred and calibrated, then the sensing system is started, and only after the IMU is valid does the state machine begin.
+
 ### Core 1 (Sensors)
 
 ```mermaid
@@ -220,7 +223,7 @@ stateDiagram-v2
     STOP --> STOP
 ```
 
-### [Obstacle](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro26obstacle) Challenge Code
+### [Obstacle](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro26obstacle) Challenge State Machine
 
 ```mermaid
 stateDiagram-v2 
@@ -255,8 +258,10 @@ stateDiagram-v2
   LASTWALL --> STOP: starting position reached
   STOP --> STOP
 ```
-[Camera code](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro2026camera) on OpenMV:
+#### [Obstacle Detection Camera Code](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro2026camera) on OpenMV:
 <img width="882" height="796" alt="Screenshot 2026-08-23 174158" src="https://github.com/user-attachments/assets/e0c772f1-6628-43fc-9e79-994b5184279a" />
+The obstacle detection uses the OpenMV AE3 camera to detect red and green blobs in each frame, threshold them by colour, and identify the largest matching blob. It then checks the blob’s orientation and size, and if a valid marker is seen for long enough (based on clock.fps()) and is large enough (height of blob > certain value), it sends a command over UART to the robot indicating whether the obstacle is on the left or right side, using messages like “a”, “b”, “c”, or “d” to signal left green, right green, left red, and right red respectively. This acts as the robot’s external obstacle-awareness layer, allowing the main code to react to colored markers by changing its state in the state machine.
+
 
 ## Bill of Materials (Core Components)
 
