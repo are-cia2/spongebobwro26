@@ -95,7 +95,7 @@ Encoder channels on GPIO 14 and 15 provide position feedback. At startup, the cu
 
 ```text
   targetPosition = constrain(targetPosition, rightAngle - 5, leftAngle + 5);
-  int positionError = pulseCount - targetPosition;  //(headingError * 5.0) - (steer.getPosition() - STEER_CENTER);
+  int positionError = pulseCount - targetPosition;
   int pwmRun = constrain(positionError * 22, -255, 255);
 ```
 
