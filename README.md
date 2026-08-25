@@ -1,9 +1,6 @@
-Engineering materials
-====
+# CORE SPONGEBOB – WRO Future Engineers 2026
 
 This repository contains engineering materials for a self-driving vehicle model participating in the WRO Future Engineers competition in the 2026 season.
-
-# CORE SPONGEBOB – WRO Future Engineers 2026
 
 ## Team
 <img width="512" height="384" alt="WhatsApp Image 2026-08-23 at 12 37 10 PM" src="https://github.com/user-attachments/assets/e26988b3-0663-43bb-8460-0f380b7eb5b1" />
@@ -93,7 +90,6 @@ To shorten the wheelbase as much as possible, the long medium motor is mounted d
 - Third Stage (12:20): A small-to-big stage providing the final speed reduction to the wheels. Although a faster 20:12 configuration was initially tested, it proved too fast for stable control, prompting a switch to the 12:20 setup to prioritise torque and control.
 
 *Steering Mechanism*
-
 The steering actuator is a LEGO MINDSTORMS EV3 Medium Motor on EVN motor port 3.
 Encoder channels on GPIO 14 and 15 provide position feedback. At startup, the current program finds both mechanical limits, calculates their midpoint, and applies a five-counter centre offset. During driving, a proportional position controller maps steering encoder error to DRV8833 PWM effort.
 
@@ -113,14 +109,13 @@ measurement.
 
 **4 × [TF-Luna](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/TFLunapins.jpeg) LiDAR (front, rear, left, right)**
 
-The code corrects line-of-sight range to estimated perpendicular wall distance:
+This sensor is a Time of Flight (TOF) distance measurement sensor. We chose to use this sensor because it is able to measure object distance accurately by measuring how long the light takes to bounce back to the sensor. The code corrects line-of-sight range to estimated perpendicular wall distance:
 
 $$
-snappedHeading = d_{heading}\cos(\Delta\psi)
+d_{perpendicular} = d_{raw}\cos(\Delta\psi)
 $$
-
 where $\Delta\psi$ is yaw relative to the nearest cardinal field heading. This
-assumes a planar axis-aligned wall and is intentionally not trusted while a beam
+assumes a planar axis-aligned wall and is intentionally not trusted when a beam
 looks through an open corner.
     
 **1 x [MPU6050](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/MPU6050pins.jpeg) IMU (yaw estimation)**
@@ -128,6 +123,8 @@ looks through an open corner.
 The IMU mount began as a carrying handle but was repurposed to hold the IMU level and away from motor heat, preserving sensor accuracy. The front sensor mount fixes the camera and forward LiDAR in a repeatable geometry, while side and rear LiDAR mounts elevate the sensors to reduce floor reflections and maintain clear views of the field walls. This placement strategy was iterated three times, with final mounting heights chosen to maximise detection reliability at the sensors’ 3‑meter range.
 
 **1 × [OpenMV AE3 camera](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/OpenMVae3pins.jpeg) (traffic sign detection)**
+
+The OpenMV AE3 allows for a long-range vision strategy while significantly elevating performance. Equipped with dual hardware Neural Processing Units (NPUs) and a 1 MP colour global shutter sensor, the AE3 processes machine-learning detection models with minimal latency and captures crystal-clear frames without motion blur while driving. Combined with low power consumption and onboard Time-of-Flight ranging, the OpenMV AE3 is more than sufficient for rapidly classifying visual targets and enabling swift, accurate navigation decisions during dynamic runs.
 
 #### Electrical Architecture and Wiring
 
@@ -148,7 +145,11 @@ flowchart TD
 
 ### Power
 **2 × 18650 cells in series (8.4 V max), regulators for 3.3 V and 5 V rails** 
-add stuff
+
+They are connected in series to provide the EVN ALPHA with 8.4v and are rated for 4.2v when fully charged. The motors run off unregulated battery power, consuming up to 780mA each at stall. There are 2 on-board regulators. The 3.3v regulator powers most of the system and is able to supply 3A. The current consumption of our 3.3V peripherals is under 1A. The 5V regulator only supplies the 5V rail and provides up to 3A. The only sensors we have attached to the 5V rail are the 2 Benewake sensors. While ranging, each sensor draws up to 600mA in a short pulse. This means that we are also well within the current capabilities of the regulator. 
+
+The cells we use are the Molicel P26A, featuring a maximum discharge current of 35A. At maximum load, our robot uses less than 2A with the maximum contribution from the 2 medium motors. With a rated capacity of 2.6Ah, it can easily last more than an hour of continuous operation.
+
 
 ---
 ## System Architecture
@@ -181,7 +182,23 @@ The main subsystem interfaces are deliberately narrow. Core 1 is the only core t
 
 ## Code Structure
 
-### Open Challenge State Machine
+### Core 1 (Sensors)
+
+```mermaid
+stateDiagram-v2 
+  [*] --> INITIALISE 
+  INITIALISE --> CALIBRATE: calibration required 
+  INITIALISE --> LOADOFFSETS: calibration saved 
+  CALIBRATE --> IMU LOADOFFSETS --> IMU 
+  IMU --> READSENSORS READSENSORS --> 
+  READSENSORS: update yaw + distance sensors 
+  READSENSORS --> CAMERA: Obstacle Challenge 
+  CAMERA --> READSENSORS: colour detected / no colour 
+  READSENSORS --> ROBOTCONTROL 
+  ROBOTCONTROL --> READSENSORS
+```
+
+### [Open Challenge](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro26open) State Machine
 
 ```mermaid
 stateDiagram-v2
@@ -202,51 +219,44 @@ stateDiagram-v2
     LASTWALL --> STOP: startup front/rear pose crossed
     STOP --> STOP
 ```
-### Modules
-- **Main Control (EVN Alpha)**
-  - Handles motor drivers (DRV8833) and sensor inputs via I2C.
-  - Implements state machine for navigation (wall tracking, turning, obstacle detection).
-  - 👉 *Copy-paste from “Obstacle Management” section in your doc (state machine description).*
 
-- **Sensor Core**
-  - TF-Luna LiDAR drivers (front, rear, left, right).
-  - MPU6050 IMU driver with DMP fusion for yaw estimation.
-  - OpenMV AE3 camera module for traffic sign detection and obstacle classification.
-  - 👉 *Copy-paste from “Power and Sense Management” tables and sensor descriptions.*
+### [Obstacle](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro26obstacle) Challenge Code
 
-- **Steering Control**
-  - Proportional position control using EV3 Medium Motor encoder feedback.
-  - Gear reduction improves angular resolution to 0.36°.
-  - 👉 *Copy-paste from “Movement” section (steering motor + gear reduction).*
-
-- **Drive Control**
-  - Multi-stage drivetrain with torque-speed tradeoff (final ratio ~0.714).
-  - Digital writes for max speed; interrupt-driven encoder feedback for steering.
-  - 👉 *Copy-paste from “Movement” section (gear ratio calculation + velocity).*
-
-- **Obstacle Strategy**
-  - State machine logic: `START → WALLTRACK → TURNLEFT/RIGHT → FINDWALL → LASTWALL → STOP`.
-  - Functions: `getError()`, `turningAngle()`, `trackHeading()`, `runPosition()`.
-  - 👉 *Copy-paste from “Obstacle Challenge” and “Wall Tracking” 
-## Build / Compile / Upload Process
-
-1. **Code Development**
-   - EVN Alpha code written in C++/MicroPython.
-   - OpenMV IDE used for AE3 camera scripts.
-   - Fusion 360 for CAD → exported STL → 3D print.
-
-2. **Compilation**
-   - EVN Alpha: Code compiled and uploaded via USB-C.
-   - OpenMV AE3: Scripts uploaded via OpenMV IDE.
-
-3. **Upload**
-   - Connect EVN Alpha via USB-C.
-   - Flash firmware and upload code using provided toolchain.
-   - Camera scripts deployed separately.
-
-👉 *You can copy-paste wiring diagrams or pinout tables from “Power and Sense Management” here.*
-
----
+```mermaid
+stateDiagram-v2 
+  [*] --> START 
+  START --> FIRSTWALL: sensors valid and starting wall selected 
+  FIRSTWALL --> LEFTOBSTACLE: green obstacle detected
+  FIRSTWALL --> RIGHTOBSTACLE: red obstacle detected FIRSTWALL --> STOP: front detected + corner direction identified 
+  LEFTOBSTACLE --> FIRSTWALL: obstacle passed 
+  RIGHTOBSTACLE --> FIRSTWALL: obstacle passed 
+  FIRSTWALL --> BASICOVERSHOOT: corner detected 
+  BASICOVERSHOOT --> TURNRIGHT: CW distance reached 
+  BASICOVERSHOOT --> TURNLEFT: CCW distance reached 
+  TURNRIGHT --> FINDWALL: 90-degree heading reached 
+  TURNLEFT --> FINDWALL: 90-degree heading reached 
+  FINDWALL --> RIGHTOBSTACLE: wall reacquired after delay 
+  FINDWALL --> LEFTOBSTACLE: obstacle detected 
+  RIGHTOBSTACLE --> FINDWALL: obstacle passed 
+  LEFTOBSTACLE --> FINDWALL: obstacle passed 
+  FINDWALL --> WALLTRACK: wall reacquired 
+  WALLTRACK --> LEFTOBSTACLE: obstacle detected 
+  WALLTRACK --> RIGHTOBSTACLE: obstacle detected 
+  WALLTRACK --> BASICOVERSHOOT: normal corner detected 
+  WALLTRACK --> OVERSHOOT: final corner detected 
+  BASICOVERSHOOT --> TURNRIGHT: CW
+  BASICOVERSHOOT --> TURNLEFT: CCW
+  OVERSHOOT --> TURNRIGHT: final CW distance reached 
+  OVERSHOOT --> TURNLEFT: final CCW distance reached 
+  TURNRIGHT --> LASTWALL: final turn complete 
+  TURNLEFT --> LASTWALL: final turn complete
+  LASTWALL --> LEFTOBSTACLE: obstacle detected 
+  LASTWALL --> RIGHTOBSTACLE: obstacle detected 
+  LASTWALL --> STOP: starting position reached
+  STOP --> STOP
+```
+[Camera code](https://github.com/are-cia2/spongebobwro26/tree/main/src/wro2026camera) on OpenMV:
+<img width="882" height="796" alt="Screenshot 2026-08-23 174158" src="https://github.com/user-attachments/assets/e0c772f1-6628-43fc-9e79-994b5184279a" />
 
 ## Bill of Materials (Core Components)
 
@@ -258,7 +268,23 @@ stateDiagram-v2
 | EVN Alpha          | 1   | $128.00     |
 | **Total**          |     | **$304.14** |
 
-👉 *Copy-paste from “Bill of Materials” table.*
 
+## Upload Process
+
+1. **Code Development**
+   - EVN Alpha code written in C++.
+   - OpenMV IDE used for AE3 camera scripts written in MicroPython.
+   - Fusion 360 for CAD → exported STL → 3D print.
+
+2. **Compilation**
+   - EVN Alpha: Code compiled and uploaded via USB-C.
+   - OpenMV AE3: Scripts uploaded via OpenMV IDE via USB-C.
+
+3. **Upload**
+   - Connect EVN Alpha via USB-C.
+   - Flash firmware and upload code using the provided toolchain.
+   - Camera scripts deployed separately.
+   - 
+---
 
 
