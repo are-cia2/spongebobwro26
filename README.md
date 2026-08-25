@@ -112,12 +112,39 @@ measurement.
 ### Sensors
 
 **4 × [TF-Luna](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/TFLunapins.jpeg) LiDAR (front, rear, left, right)**
+
+The code corrects line-of-sight range to estimated perpendicular wall distance:
+
+$$
+snappedHeading = d_{heading}\cos(\Delta\psi)
+$$
+
+where $\Delta\psi$ is yaw relative to the nearest cardinal field heading. This
+assumes a planar axis-aligned wall and is intentionally not trusted while a beam
+looks through an open corner.
     
 **1 x [MPU6050](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/MPU6050pins.jpeg) IMU (yaw estimation)**
 
 The IMU mount began as a carrying handle but was repurposed to hold the IMU level and away from motor heat, preserving sensor accuracy. The front sensor mount fixes the camera and forward LiDAR in a repeatable geometry, while side and rear LiDAR mounts elevate the sensors to reduce floor reflections and maintain clear views of the field walls. This placement strategy was iterated three times, with final mounting heights chosen to maximise detection reliability at the sensors’ 3‑meter range.
 
 **1 × [OpenMV AE3 camera](https://github.com/are-cia2/spongebobwro26/blob/main/schemes/OpenMVae3pins.jpeg) (traffic sign detection)**
+
+#### Electrical Architecture and Wiring
+
+```mermaid
+flowchart TD
+   BAT[2S Molicel P26A: 7.2 V nominal, 8.4 V full, 2.6 Ah] --> PROTECT[Fuse or protection: TBD]
+    PROTECT --> SWITCH[Main power switch]
+    SWITCH --> EVN[EVN Alpha]
+    EVN --> M1[Motor port 1: drive motor]
+    EVN --> M3[Motor port 3: steering motor]
+    EVN --> MUX0[I2C mux bank Wire: ports 1-8]
+    MUX0 --> P1[Port 1: MPU6500]
+    MUX0 --> P2[Port 2: rear TF-Luna]
+    MUX0 --> P3[Port 3: front TF-Luna]
+    MUX0 --> P4[Port 4: left TF-Luna]
+    MUX0 --> P5[Port 5: right TF-Luna]
+```
 
 ### Power
 **2 × 18650 cells in series (8.4 V max), regulators for 3.3 V and 5 V rails** 
