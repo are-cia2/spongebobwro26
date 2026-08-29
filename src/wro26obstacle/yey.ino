@@ -374,8 +374,8 @@ void loop1() {
 
 
 
-
-  /*
+/*
+  
     Serial.print("left: ");
     Serial.print(checkLeftDist);
     Serial.print("\t");
@@ -395,5 +395,7 @@ void loop1() {
     Serial.print(checkBackDist);
     Serial.print("\t");
     Serial.println(backDist);
+
     */
+    
 }

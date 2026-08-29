@@ -14,9 +14,8 @@
 #define LEFTOBSTACLE 10
 #define RIGHTOBSTACLE 11
 #define BASICOVERSHOOT 12
-#define BIGTURNANGLE 62
-#define SMALLTURNANGLE 45
-#define OBSTIME 1250
+#define BIGTURNANGLE 75
+#define SMALLTURNANGLE 52
 
 //to change
 #define WALLTRACKDIST 40
@@ -27,6 +26,7 @@
 #define OVERSHOOTDIST 300
 #define TURNTOLERANCE 3
 #define DISTTOLERANCE 5
+#define WALLAFTOBS 25
 
 char yippee;
 
@@ -38,6 +38,8 @@ float rightstartDist;
 float frontStartDist;
 float backStartDist;
 float startDist;
+float oriWallDist;
+float obstacleDist;
 unsigned long long initialTime;
 volatile const float gearRatio = (((40.0 / 24.0) / 1.4) / 1.67);
 
@@ -52,6 +54,7 @@ bool lastturn = false;
 int corner = 0;
 int frontDistCounter = 0;
 int obstacleTurnAngle = 45;
+int wallCounter = 0;
 
 
 extern volatile float stuffYaw;
@@ -370,8 +373,40 @@ void trackHeading(int angle) {
   runPosition(zeroPosition - angleError);
 }
 
+void loopy() {
+  if (leftGreen) {
+    prevvar = FIRSTWALL;
+    obstacleTurnAngle = BIGTURNANGLE;
+    var = LEFTOBSTACLE;
+    Serial.println("leftgreen");
+
+  } else if (rightGreen) {
+    prevvar = FIRSTWALL;
+    obstacleTurnAngle = SMALLTURNANGLE;
+    var = LEFTOBSTACLE;
+    Serial.println("rightgreen");
+
+  } else if (leftRed) {
+    prevvar = FIRSTWALL;
+    obstacleTurnAngle = SMALLTURNANGLE;
+    var = RIGHTOBSTACLE;
+    Serial.println("leftred");
+
+  } else if (rightRed) {
+    prevvar = FIRSTWALL;
+    obstacleTurnAngle = BIGTURNANGLE;
+    var = RIGHTOBSTACLE;
+    Serial.println("rightred");
+  }
+}
 
 void loop() {
+  /*
+  Serial.println(leftGreen);
+  Serial.println(rightGreen);
+  Serial.println(leftRed);
+  Serial.println(rightRed);
+  */
   switch (var) {
     case PRINT:
 
@@ -416,24 +451,28 @@ void loop() {
       if (leftGreen) {
         prevvar = FIRSTWALL;
         obstacleTurnAngle = BIGTURNANGLE;
+        oriWallDist = rightDist;
         var = LEFTOBSTACLE;
         Serial.println("leftgreen");
 
       } else if (rightGreen) {
         prevvar = FIRSTWALL;
         obstacleTurnAngle = SMALLTURNANGLE;
+        oriWallDist = rightDist;
         var = LEFTOBSTACLE;
         Serial.println("rightgreen");
 
       } else if (leftRed) {
         prevvar = FIRSTWALL;
         obstacleTurnAngle = SMALLTURNANGLE;
+        oriWallDist = leftDist;
         var = RIGHTOBSTACLE;
         Serial.println("leftred");
 
       } else if (rightRed) {
         prevvar = FIRSTWALL;
         obstacleTurnAngle = BIGTURNANGLE;
+        oriWallDist = leftDist;
         var = RIGHTOBSTACLE;
         Serial.println("rightred");
       }
@@ -612,7 +651,7 @@ void loop() {
           Serial.print("\t");
           Serial.println(-(miniLeftAngle()));
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(leftAngle);
@@ -628,39 +667,112 @@ void loop() {
           }
 
           break;
+// turn turn then no obstacle then obstacle then wait counter 10 no obstacle turn back
 
-
-        case 1:  //turnright
+        case 1:  //turnright to front
           Serial.println("right");
           Serial.print(stuffYaw);
           Serial.print("\t");
           Serial.println(-(miniRightAngle()));
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
+          digitalWrite(29, HIGH);
+
+          runPosition(rightAngle);
+
+          if (cw) {
+            if (abs(stuffYaw - turningAngle()) < TURNTOLERANCE) {
+              leftobstaclevar = 2;
+              wallCounter = 0;
+              
+        digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        delay(1000);
+        
+            }
+          } else {
+            if (abs(stuffYaw + turningAngle()) < TURNTOLERANCE) {
+              leftobstaclevar = 2;
+              wallCounter = 0;
+              digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        delay(1000);
+            }
+          }
+
+          break;
+
+        case 2: //
+        Serial.print(rightDist);
+        Serial.print("\t");
+        Serial.println(oriWallDist);
+        
+
+          trackHeading(turningAngle());
+
+          if (rightDist < oriWallDist && !righterror) {
+            wallCounter++;
+
+            if (wallCounter >= 5) {
+              obstacleDist = rightDist;
+              wallCounter = 0;
+            leftobstaclevar = 3;
+            digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        delay(1000);
+
+            }
+          }
+        
+        break;
+
+        case 3:
+        Serial.println(wallCounter);
+        
+          trackHeading(turningAngle());
+
+          if (rightDist >= obstacleDist && !righterror) {
+            wallCounter++;
+
+            if (wallCounter >= 10) {
+              wallCounter = 0;
+              leftobstaclevar = 4;
+              digitalWrite(28, LOW);
+        digitalWrite(29, LOW);
+        delay(1000);
+            }
+          }
+
+          break;
+
+        case 4: //turn right
+        analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(rightAngle);
 
           if (cw) {
             if (abs(stuffYaw - miniRightAngle()) < TURNTOLERANCE) {
-              leftobstaclevar = 2;
+              leftobstaclevar = 5;
+              wallCounter = 0;
             }
           } else {
             if (abs(stuffYaw + miniRightAngle()) < TURNTOLERANCE) {
-              leftobstaclevar = 2;
+              leftobstaclevar = 5;
+              wallCounter = 0;
             }
           }
 
           break;
 
 
-        case 2:  // turnleft to front
+        case 5:  // turnleft to front
           Serial.println("front");
           Serial.print(stuffYaw);
           Serial.print("\t");
           Serial.println(-(turningAngle()));
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(leftAngle);
@@ -697,7 +809,7 @@ void loop() {
         case 0:  //turnright
           Serial.println("right");
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(rightAngle);
@@ -718,7 +830,7 @@ void loop() {
         case 1:  //turnleft
           Serial.println("left");
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(leftAngle);
@@ -742,7 +854,7 @@ void loop() {
           Serial.print("\t");
           Serial.println(-(turningAngle()));
 
-          digitalWrite(28, LOW);
+          analogWrite(28, 50);
           digitalWrite(29, HIGH);
 
           runPosition(rightAngle);
