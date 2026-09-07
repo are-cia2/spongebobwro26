@@ -4,22 +4,26 @@ import math
 from machine import UART
 from machine import LED
 
+led_blue = LED("LED_BLUE")
+led_blue.on()
+
+
 # 1. Initialize UART Communications
 uart = UART(1, 115200, timeout_char=200)
 
 # 2. Color Threshold Arrays (LAB Color Space)
-threshold_green = [(19, 31, -128, -8, -128, 127)]
-threshold_red = [(40, 55, 17, 127, 21, 127)]
+threshold_green = [(9, 27, -128, -9, -128, 127)]
+threshold_red = [(21, 38, 13, 127, -128, 127)]
 
 # 3. OpenMV v5.0.0+ CSI Camera Initialization Engine
 csi0 = csi.CSI()
 csi0.reset()
 csi0.pixformat(csi.RGB565)
-csi0.framesize(csi.QVGA) # QVGA is 320x240 pixels
+csi0.framesize(csi.QVGA)
 csi0.snapshot(time=500)
 
 # 4. Strict Manual Sensor Control Overrides
-csi0.auto_gain(False, gain_db=15)
+csi0.auto_gain(False, gain_db=24.082400)
 csi0.snapshot(time=500)
 
 csi0.auto_whitebal(False, rgb_gain_db=((1.604295, 0.0, 7.31645)))
@@ -41,7 +45,7 @@ greenFound = False
 # 6. Global LED Definitions (Avoids inner loop memory allocation)
 led_red = LED("LED_RED")
 led_green = LED("LED_GREEN")
-led_blue = LED("LED_BLUE")
+led_blue.off()
 
 # 7. Front-filtering Settings (Targeting vertical objects at 90° with a 20° buffer)
 TARGET_ROTATION = math.radians(90)
@@ -115,11 +119,14 @@ while True:
             redCounter += 1
             if redCounter > (clock.fps() * 0.5):
                 led_green.off()
-                led_blue.off()
-                led_red.on()
+                led_blue.on()
+                led_red.off()
 
                 # Check bounding box height element explicitly (Index 3 of rect tuple)
                 if rect[3] >= 85:
+                    led_green.off()
+                    led_blue.off()
+                    led_red.on()
                     if seenBlob.cx < 140:
                         print("leftred")
                         uart.write("c")
@@ -130,16 +137,19 @@ while True:
             redFound = False
             greenFound = True
             redCounter = 0
-            led_red.off()
-            led_blue.off()
-            led_green.on()
 
             print("green", greenCounter)
             greenCounter += 1
 
             if greenCounter >= (clock.fps() * 0.5):
+                led_green.off()
+                led_blue.on()
+                led_red.off()
                 # Check bounding box height element explicitly (Index 3 of rect tuple)
                 if rect[3] >= 85:
+                    led_red.off()
+                    led_blue.off()
+                    led_green.on()
                     if seenBlob.cx < 140:
                         print("leftgreen")
                         uart.write("a")
@@ -149,7 +159,7 @@ while True:
     else:
         # Failsafe default tracking condition state
         led_green.off()
-        led_blue.on()
+        led_blue.off()
         led_red.off()
 
     if not redFound:
