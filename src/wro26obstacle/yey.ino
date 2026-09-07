@@ -52,6 +52,7 @@ struct YPRData {
 
 extern volatile bool core0_ready;
 extern volatile bool core1_ready;
+volatile bool rangeDataReady = false;
 
 extern volatile int pulseCountback;
 extern volatile const float gearRatio;
@@ -89,7 +90,7 @@ void setup1() {
   board.begin();
   board.setPort(1);
   Serial.begin(115200);
-  Serial2.begin(115200);
+  
   //while (!Serial)
   //  ;
 
@@ -246,24 +247,24 @@ int tfVal(byte port = LEFTDS) {
   board.setPort(port);
   if (tflI2C.getData(tfDist, tfAddr)) {
     tfValue = tfDist;
-    if (port == 5) {
+    if (port == LEFTDS) {
       lefterror = false;
-    } else if (port == 4) {
+    } else if (port == RIGHTDS) {
       righterror = false;
-    } else if (port == 3) {
+    } else if (port == FRONTDS) {
       fronterror = false;
-    } else {
+    } else if (port == BACKDS) {
       backerror = false;
     }
 
   } else {
-    if (port == 5) {
+    if (port == LEFTDS) {
       lefterror = true;
-    } else if (port == 4) {
+    } else if (port == RIGHTDS) {
       righterror = true;
-    } else if (port == 3) {
+    } else if (port == FRONTDS) {
       fronterror = true;
-    } else {
+    } else if (port == BACKDS) {
       backerror = true;
     }
     tflI2C.printStatus();
@@ -278,36 +279,7 @@ int tfVal(byte port = LEFTDS) {
 
 void loop1() {
 
-  if (Serial2.available()) {
-    char yippee = Serial2.read();
-
-    if (yippee == 'a') {  //leftgreen
-      leftGreen = true;
-      rightGreen = false;
-      leftRed = false;
-      rightRed = false;
-
-    } else if (yippee == 'b') {  //rightgreen
-      leftGreen = false;
-      rightGreen = true;
-      leftRed = false;
-      rightRed = false;
-
-    } else if (yippee == 'c') {  //leftRed
-      leftGreen = false;
-      rightGreen = false;
-      leftRed = true;
-      rightRed = false;
-
-    } else if (yippee == 'd') {  //rightRed
-      leftGreen = false;
-      rightGreen = false;
-      leftRed = true;
-      rightRed = false;
-
-    }
-  }
-
+  
   YPRData stuff = getYawPitchRoll();
 
   if (stuff.valid) {
@@ -356,7 +328,12 @@ void loop1() {
   } else {
     Serial.println("backerror");
   }
-  Serial.println(stuffYaw);
+
+  if (!rangeDataReady && !lefterror && !righterror && !fronterror && !backerror
+      && leftDist > 0 && rightDist > 0 && frontDist > 0 && backDist > 0) {
+    rangeDataReady = true;
+  }
+  //Serial.println(yippee);
   /*
    Serial.print("right: ");
     Serial.print(checkRightDist);

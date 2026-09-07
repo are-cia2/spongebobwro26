@@ -52,6 +52,7 @@ struct YPRData {
 
 extern volatile bool core0_ready;
 extern volatile bool core1_ready;
+volatile bool rangeDataReady = false;
 
 extern volatile int pulseCountback;
 extern volatile const float gearRatio;
@@ -322,6 +323,11 @@ void loop1() {
 
   } else {
     Serial.println("backerror");
+  }
+
+  if (!rangeDataReady && !lefterror && !righterror && !fronterror && !backerror
+      && leftDist > 0 && rightDist > 0 && frontDist > 0 && backDist > 0) {
+    rangeDataReady = true;
   }
 /*
    Serial.print("right: ");
